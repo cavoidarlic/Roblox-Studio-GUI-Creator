@@ -27,7 +27,7 @@ import {
   alignElements
 } from './utils/robloxMath';
 import { parseLuauScript } from './utils/luauParser';
-import { reorderAndReparent, DropPosition, sanitizeHierarchy } from './utils/hierarchy';
+import { reorderAndReparent, DropPosition, sanitizeHierarchy, getAllDescendantIds } from './utils/hierarchy';
 import { LoadScriptModal } from './components/LoadScriptModal';
 import {
   saveToLocalCache,
@@ -116,6 +116,12 @@ export default function App() {
   // Undo / Redo history stacks
   const [history, setHistory] = useState<RobloxElement[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+
+  // Copy / Paste Clipboard
+  const [clipboard, setClipboard] = useState<{
+    roots: RobloxElement[];
+    allElements: RobloxElement[];
+  } | null>(null);
 
   // Modals & Notifications
   const [isExportOpen, setIsExportOpen] = useState(false);
@@ -411,8 +417,16 @@ export default function App() {
   );
 
   // Duplicate Element (handles single or multi-selection, including recursive children)
-  const handleDuplicateSelected = useCallback(() => {
-    const targetIds = selectedIds.length > 0 ? selectedIds : (selectedId ? [selectedId] : []);
+  const handleDuplicateSelected = useCallback((explicitTargetId?: string) => {
+    let targetIds: string[] = [];
+    if (explicitTargetId) {
+      targetIds = [explicitTargetId];
+    } else if (selectedIds.length > 0) {
+      targetIds = selectedIds;
+    } else if (selectedId) {
+      targetIds = [selectedId];
+    }
+
     if (targetIds.length === 0) return;
 
     // Filter target roots to avoid duplicating descendants twice if both parent and child were selected
@@ -427,6 +441,7 @@ export default function App() {
 
     if (rootTargetIds.length === 0) return;
 
+    // Track the new items to insert and where to insert them
     const newCreatedElements: RobloxElement[] = [];
     const newSelectedIds: string[] = [];
 
@@ -435,7 +450,7 @@ export default function App() {
       const orig = elements.find(e => e.id === origId);
       if (!orig) return '';
 
-      const newId = `el_${nextIdCounter.current++}`;
+      const newId = `el_${Date.now()}_${nextIdCounter.current++}`;
       const clone: RobloxElement = JSON.parse(JSON.stringify(orig));
       clone.id = newId;
       clone.name = isRootOfDuplication ? `${orig.name}_Copy` : orig.name;
@@ -471,13 +486,210 @@ export default function App() {
       : `Duplicated ${rootTargetIds.length} elements`;
 
     soundEffects.play('click');
-    updateElementsWithHistory(prev => [...prev, ...newCreatedElements], toastMsg);
+
+    // Place the cloned elements immediately after the original element & its descendants in tree order
+    updateElementsWithHistory(prev => {
+      const result = [...prev];
+      const lastRootId = rootTargetIds[rootTargetIds.length - 1];
+      const lastRootIdx = result.findIndex(e => e.id === lastRootId);
+
+      if (lastRootIdx === -1) {
+        return [...result, ...newCreatedElements];
+      }
+
+      const allDescendants = new Set(getAllDescendantIds(lastRootId, result));
+      let insertAfterIdx = lastRootIdx;
+      for (let i = lastRootIdx + 1; i < result.length; i++) {
+        if (allDescendants.has(result[i].id)) {
+          insertAfterIdx = i;
+        }
+      }
+
+      result.splice(insertAfterIdx + 1, 0, ...newCreatedElements);
+      return result;
+    }, toastMsg);
 
     if (newSelectedIds.length > 0) {
       setSelectedId(newSelectedIds[0]);
       setSelectedIds(newSelectedIds);
     }
   }, [elements, selectedId, selectedIds, updateElementsWithHistory]);
+
+  // Copy Selected Element(s) to Clipboard (Ctrl+C)
+  const handleCopySelected = useCallback(() => {
+    const targetIds = selectedIds.length > 0 ? selectedIds : (selectedId ? [selectedId] : []);
+    if (targetIds.length === 0) {
+      showToast('Select an element to copy');
+      return;
+    }
+
+    // Filter to top-level roots among selected elements
+    const rootTargetIds = targetIds.filter(id => {
+      let curr = elements.find(e => e.id === id);
+      while (curr && curr.parentId) {
+        if (targetIds.includes(curr.parentId)) return false;
+        curr = elements.find(e => e.id === curr?.parentId);
+      }
+      return true;
+    });
+
+    const collectedElements: RobloxElement[] = [];
+    const collectSubtree = (id: string) => {
+      const el = elements.find(e => e.id === id);
+      if (!el) return;
+      collectedElements.push(JSON.parse(JSON.stringify(el)));
+      elements.filter(child => child.parentId === id).forEach(child => collectSubtree(child.id));
+    };
+
+    rootTargetIds.forEach(id => collectSubtree(id));
+
+    const rootElements = collectedElements.filter(e => rootTargetIds.includes(e.id));
+    setClipboard({ roots: rootElements, allElements: collectedElements });
+
+    soundEffects.play('click');
+    const toastMsg = rootElements.length === 1
+      ? `Copied ${rootElements[0].name} (Ctrl+C)`
+      : `Copied ${rootElements.length} elements (Ctrl+C)`;
+    showToast(toastMsg);
+  }, [elements, selectedId, selectedIds, showToast]);
+
+  // Paste Element(s) from Clipboard into selected target or parent (Ctrl+V)
+  const handlePasteClipboard = useCallback(() => {
+    if (!clipboard || clipboard.roots.length === 0) {
+      showToast('Clipboard is empty (press Ctrl+C to copy an element first)');
+      return;
+    }
+
+    // Determine target parent container
+    let targetParentId: string | null = null;
+    if (selectedId) {
+      const sel = elements.find(e => e.id === selectedId);
+      if (sel) {
+        // If selected element is a container frame, paste INSIDE it
+        if (['Frame', 'ScrollingFrame', 'ViewportFrame'].includes(sel.type)) {
+          targetParentId = sel.id;
+        } else {
+          // If selected element is a leaf (e.g. TextButton/ImageLabel), paste as its sibling (in same parent)
+          targetParentId = sel.parentId || null;
+        }
+      }
+    }
+
+    const newCreatedElements: RobloxElement[] = [];
+    const newSelectedIds: string[] = [];
+
+    clipboard.roots.forEach(root => {
+      const idMap = new Map<string, string>();
+
+      // Generate new IDs for the whole tree
+      const getNewId = (origId: string) => {
+        if (!idMap.has(origId)) {
+          idMap.set(origId, `el_${nextIdCounter.current++}`);
+        }
+        return idMap.get(origId)!;
+      };
+
+      const cloneSubtree = (origId: string, currentParentId: string | null, isRootOfPaste: boolean) => {
+        const orig = clipboard.allElements.find(e => e.id === origId);
+        if (!orig) return;
+
+        const newId = getNewId(origId);
+        const clone: RobloxElement = JSON.parse(JSON.stringify(orig));
+        clone.id = newId;
+        clone.parentId = currentParentId;
+        clone.name = isRootOfPaste ? `${orig.name}_Paste` : orig.name;
+
+        if (isRootOfPaste) {
+          // If pasting inside the same container, offset slightly; if pasting into a new container, put at top-left
+          const isSameParent = targetParentId === orig.parentId;
+          if (isSameParent) {
+            clone.position.offsetX += 16;
+            clone.position.offsetY += 16;
+          } else {
+            clone.position.offsetX = Math.max(0, clone.position.offsetX);
+            clone.position.offsetY = Math.max(0, clone.position.offsetY);
+          }
+          newSelectedIds.push(newId);
+        }
+
+        newCreatedElements.push(clone);
+
+        const children = clipboard.allElements.filter(c => c.parentId === origId);
+        children.forEach(child => cloneSubtree(child.id, newId, false));
+      };
+
+      cloneSubtree(root.id, targetParentId, true);
+    });
+
+    if (newCreatedElements.length === 0) return;
+
+    soundEffects.play('click');
+    const targetParentName = targetParentId ? elements.find(e => e.id === targetParentId)?.name : rootType;
+    updateElementsWithHistory(
+      prev => [...prev, ...newCreatedElements],
+      `Pasted ${clipboard.roots.length} element(s) into ${targetParentName}`
+    );
+
+    if (newSelectedIds.length > 0) {
+      setSelectedId(newSelectedIds[0]);
+      setSelectedIds(newSelectedIds);
+    }
+  }, [clipboard, elements, selectedId, rootType, updateElementsWithHistory, showToast]);
+
+  // Convert Selected Element Type (e.g. Frame -> TextLabel -> ImageLabel)
+  const handleConvertElementType = useCallback(
+    (targetType: RobloxElementType) => {
+      if (!selectedId) return;
+      const target = elements.find(e => e.id === selectedId);
+      if (!target || target.type === targetType) return;
+
+      updateElementsWithHistory(prev => {
+        return prev.map(el => {
+          if (el.id !== selectedId) return el;
+
+          const updated: RobloxElement = {
+            ...el,
+            type: targetType
+          };
+
+          // If converting to a text-based element and it has no text yet, set friendly defaults
+          if (['TextLabel', 'TextButton', 'TextBox'].includes(targetType)) {
+            if (!updated.text) {
+              updated.text = targetType === 'TextButton' ? 'Button' : el.name;
+            }
+            if (!updated.textColor) updated.textColor = '#ffffff';
+            if (!updated.textSize) updated.textSize = 14;
+            if (!updated.font) updated.font = targetType === 'TextButton' ? 'SourceSansBold' : 'SourceSans';
+            if (targetType === 'TextBox' && !updated.placeholderText) {
+              updated.placeholderText = 'Type here...';
+            }
+          }
+
+          // If converting to an image-based element and it has no image yet, set a decal placeholder
+          if (['ImageLabel', 'ImageButton'].includes(targetType)) {
+            if (!updated.image) {
+              updated.image = 'https://placehold.co/300x200/22222b/ffffff?text=Roblox+Decal';
+            }
+            if (!updated.scaleType) updated.scaleType = 'Stretch';
+            if (updated.imageTransparency === undefined) updated.imageTransparency = 0;
+          }
+
+          // If converting to a ScrollingFrame, set canvas defaults
+          if (targetType === 'ScrollingFrame') {
+            if (!updated.canvasSize) {
+              updated.canvasSize = { scaleX: 0, offsetX: 0, scaleY: 2, offsetY: 0 };
+            }
+            if (!updated.scrollBarThickness) updated.scrollBarThickness = 8;
+          }
+
+          return updated;
+        });
+      }, `Converted ${target.name} to ${targetType}`);
+
+      soundEffects.play('click');
+    },
+    [elements, selectedId, updateElementsWithHistory]
+  );
 
   // Drag and drop reparenting & reordering in Explorer tree
   const handleReparentElement = useCallback(
@@ -808,6 +1020,19 @@ export default function App() {
     showToast(`Fitted Canvas (${Math.round(fitZoom * 100)}%)`);
   }, [viewport.width, viewport.height, showToast]);
 
+  // New Blank Project (Clear Canvas)
+  const handleNewProject = useCallback(() => {
+    if (elements.length > 0) {
+      const confirmNew = window.confirm('Start a new blank project? Any unsaved changes will be cleared.');
+      if (!confirmNew) return;
+    }
+    soundEffects.play('click');
+    updateElementsWithHistory(() => [], 'Created new blank board');
+    setSelectedId(null);
+    setSelectedIds([]);
+    setSelectedModifierKey(null);
+  }, [elements.length, updateElementsWithHistory]);
+
   // Save Project to File (.rbxgui)
   const handleSaveFile = useCallback(() => {
     const projectState: ProjectState = {
@@ -932,6 +1157,12 @@ export default function App() {
           e.preventDefault();
           handleDeleteElement(selectedId);
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        handleCopySelected();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        handlePasteClipboard();
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'd') {
         e.preventDefault();
         handleDuplicateSelected();
@@ -965,6 +1196,8 @@ export default function App() {
   }, [
     selectedId,
     handleDeleteElement,
+    handleCopySelected,
+    handlePasteClipboard,
     handleDuplicateSelected,
     handleGroupIntoFrame,
     handleSaveFile,
@@ -1066,6 +1299,7 @@ export default function App() {
       <TopHeader
         rootType={rootType}
         onSwitchRoot={setRootType}
+        onNewCanvas={handleNewProject}
         onSaveFile={handleSaveFile}
         onLoadFileTrigger={() => fileInputRef.current?.click()}
         onLoadScriptTrigger={() => setIsLoadScriptOpen(true)}
@@ -1119,9 +1353,7 @@ export default function App() {
               onRemoveModifier={handleRemoveModifier}
               onDeleteElement={handleDeleteElement}
               onDuplicateElement={id => {
-                setSelectedId(id);
-                setSelectedIds([id]);
-                setTimeout(() => handleDuplicateSelected(), 0);
+                handleDuplicateSelected(id);
               }}
               onToggleVisibility={id => {
                 updateElementsWithHistory(prev =>
@@ -1219,6 +1451,7 @@ export default function App() {
               onConvertToScreenGuiScale={handleConvertToScreenGuiScale}
               onConvertToOffset={handleConvertToOffset}
               onToggleAspectRatio={handleToggleAspectRatio}
+              onConvertType={handleConvertElementType}
               onSelectModifierOnly={setSelectedModifierKey}
               onClose={() => setIsPropertiesOpen(false)}
             />

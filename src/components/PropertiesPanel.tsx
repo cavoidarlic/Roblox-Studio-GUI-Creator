@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   RobloxElement,
+  RobloxElementType,
   ModifierType,
   GuiRootType,
   RootProperties
@@ -22,7 +23,8 @@ import {
   Search,
   Palette,
   Check,
-  Monitor
+  Monitor,
+  RefreshCw
 } from 'lucide-react';
 import { ROBLOX_BRICK_COLORS, ROBLOX_UI_THEMES, UiColorTheme } from '../data/brickColors';
 import { soundEffects } from '../utils/soundEffects';
@@ -40,6 +42,7 @@ interface PropertiesPanelProps {
   onConvertToScreenGuiScale?: () => void;
   onConvertToOffset: () => void;
   onToggleAspectRatio: () => void;
+  onConvertType?: (targetType: RobloxElementType) => void;
   onSelectModifierOnly: (modKey: ModifierType | null) => void;
   onClose?: () => void;
 }
@@ -57,6 +60,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onConvertToScreenGuiScale,
   onConvertToOffset,
   onToggleAspectRatio,
+  onConvertType,
   onSelectModifierOnly,
   onClose
 }) => {
@@ -361,9 +365,24 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
               <div className="grid grid-cols-3 gap-2 items-center">
                 <span className="text-gray-400">Class</span>
-                <span className="col-span-2 text-gray-400 font-mono">
-                  {selectedElement.type}
-                </span>
+                <div className="col-span-2 flex items-center space-x-1.5">
+                  <select
+                    value={selectedElement.type}
+                    onChange={e => onConvertType && onConvertType(e.target.value as RobloxElementType)}
+                    title="Convert to another Roblox GUI element class (retains size, position, colors, modifiers, and children)"
+                    className="flex-1 bg-[#1e1e1e] border border-[#00a2ff]/50 hover:border-[#00a2ff] text-[#00a2ff] font-mono text-xs rounded px-2 py-1 font-semibold focus:outline-none cursor-pointer"
+                  >
+                    <option value="Frame">Frame</option>
+                    <option value="TextLabel">TextLabel</option>
+                    <option value="TextButton">TextButton</option>
+                    <option value="TextBox">TextBox</option>
+                    <option value="ImageLabel">ImageLabel</option>
+                    <option value="ImageButton">ImageButton</option>
+                    <option value="ScrollingFrame">ScrollingFrame</option>
+                    <option value="ViewportFrame">ViewportFrame</option>
+                  </select>
+                  <RefreshCw className="w-3.5 h-3.5 text-[#00a2ff] shrink-0" title="Convert Type" />
+                </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2 items-center">

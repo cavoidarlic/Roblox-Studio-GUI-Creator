@@ -2,6 +2,7 @@ import React from 'react';
 import { GuiRootType, RobloxElement } from '../types/roblox';
 import {
   Box,
+  FilePlus,
   Layers,
   Sparkles,
   Download,
@@ -30,6 +31,7 @@ import { AutosaveBadge } from './AutosaveBadge';
 interface TopHeaderProps {
   rootType: GuiRootType;
   onSwitchRoot: (type: GuiRootType) => void;
+  onNewCanvas?: () => void;
   onSaveFile: () => void;
   onLoadFileTrigger: () => void;
   onLoadScriptTrigger: () => void;
@@ -69,6 +71,7 @@ interface TopHeaderProps {
 export const TopHeader: React.FC<TopHeaderProps> = ({
   rootType,
   onSwitchRoot,
+  onNewCanvas,
   onSaveFile,
   onLoadFileTrigger,
   onLoadScriptTrigger = () => {},
@@ -356,6 +359,18 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
 
         {/* Open & Save .rbxgui Group */}
         <div className="flex items-center bg-[#1e1e1e] p-0.5 rounded-md border border-[#3e3e42] shadow-xs">
+          {onNewCanvas && (
+            <button
+              onClick={onNewCanvas}
+              title="New Blank Project (Clear Canvas) (Ctrl+N)"
+              aria-label="New Blank Project"
+              className="p-1.5 sm:px-2 sm:py-1 text-emerald-400 hover:text-white hover:bg-emerald-600/20 rounded flex items-center space-x-1 transition font-medium border border-transparent hover:border-emerald-500/40"
+            >
+              <FilePlus className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="font-semibold hidden lg:inline">New</span>
+            </button>
+          )}
+
           <button
             onClick={onLoadFileTrigger}
             title="Open / Load .rbxgui Project File (Ctrl+O)"
