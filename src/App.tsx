@@ -229,7 +229,7 @@ export default function App() {
   // Add Element
   const handleAddElement = useCallback(
     (type: RobloxElementType) => {
-      const id = `el_${nextIdCounter.current++}`;
+      const id = `el_${Date.now()}_${nextIdCounter.current++}`;
       const count = elements.filter(e => e.type === type).length + 1;
       const name = `${type}${count}`;
 
@@ -296,8 +296,28 @@ export default function App() {
         newEl.size = { scaleX: 0, offsetX: 180, scaleY: 0, offsetY: 180 };
       }
 
-      updateElementsWithHistory(prev => [...prev, newEl], `Added ${type}`);
+      updateElementsWithHistory(prev => {
+        // If adding inside a selected container, insert right after the container's subtree
+        if (parentId) {
+          const parentIdx = prev.findIndex(e => e.id === parentId);
+          if (parentIdx !== -1) {
+            const descendants = new Set(getAllDescendantIds(parentId, prev));
+            let insertAfterIdx = parentIdx;
+            for (let i = parentIdx + 1; i < prev.length; i++) {
+              if (descendants.has(prev[i].id)) {
+                insertAfterIdx = i;
+              }
+            }
+            const copy = [...prev];
+            copy.splice(insertAfterIdx + 1, 0, newEl);
+            return copy;
+          }
+        }
+        return [...prev, newEl];
+      }, `Added ${type}`);
+
       setSelectedId(id);
+      setSelectedIds([id]);
       setSelectedModifierKey(null);
     },
     [elements, selectedId, updateElementsWithHistory]

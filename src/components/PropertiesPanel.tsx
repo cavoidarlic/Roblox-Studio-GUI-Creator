@@ -24,8 +24,11 @@ import {
   Palette,
   Check,
   Monitor,
-  RefreshCw
+  RefreshCw,
+  Bold,
+  Maximize
 } from 'lucide-react';
+import { ROBLOX_FONTS, getFontDefinition } from '../data/robloxFonts';
 import { ROBLOX_BRICK_COLORS, ROBLOX_UI_THEMES, UiColorTheme } from '../data/brickColors';
 import { soundEffects } from '../utils/soundEffects';
 
@@ -982,25 +985,109 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-2 items-center">
-                  <span className="text-gray-400">Font</span>
-                  <select
-                    value={selectedElement.font || 'SourceSans'}
-                    onChange={e =>
-                      onUpdateElement({ ...selectedElement, font: e.target.value })
-                    }
-                    className="col-span-2 bg-[#1e1e1e] border border-[#3c3c3c] rounded px-2 py-1 text-white"
-                  >
-                    <option value="SourceSans">SourceSans</option>
-                    <option value="SourceSansBold">SourceSansBold</option>
-                    <option value="Gotham">Gotham</option>
-                    <option value="GothamBold">GothamBold</option>
-                    <option value="FredokaOne">FredokaOne</option>
-                    <option value="Arcade">Arcade</option>
-                    <option value="SciFi">SciFi</option>
-                    <option value="Creepster">Creepster</option>
-                  </select>
-                </div>
+                  <div className="grid grid-cols-3 gap-2 items-center">
+                    <span className="text-gray-400">Font</span>
+                    <select
+                      value={selectedElement.font || 'SourceSans'}
+                      onChange={e =>
+                        onUpdateElement({ ...selectedElement, font: e.target.value })
+                      }
+                      className="col-span-2 bg-[#1e1e1e] border border-[#3c3c3c] hover:border-[#007acc] rounded px-2 py-1 text-white text-xs font-mono"
+                    >
+                      {ROBLOX_FONTS.map(f => (
+                        <option
+                          key={f.enumName}
+                          value={f.enumName}
+                          style={{ fontFamily: f.cssFamily }}
+                        >
+                          {f.displayName} ({f.category})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Font Styling: Bold Toggle & TextScaled Auto-Scale */}
+                  <div className="grid grid-cols-3 gap-2 items-center pt-1">
+                    <span className="text-gray-400">Formatting</span>
+                    <div className="col-span-2 flex items-center space-x-1.5">
+                      {/* Bold Toggle Button */}
+                      {(() => {
+                        const currentFont = selectedElement.font || 'SourceSans';
+                        const isBold =
+                          currentFont.includes('Bold') ||
+                          currentFont === 'Bangers' ||
+                          currentFont === 'FredokaOne' ||
+                          currentFont === 'LuckiestGuy';
+
+                        const handleToggleBold = () => {
+                          let nextFont = currentFont;
+                          if (currentFont.endsWith('Bold')) {
+                            const withoutBold = currentFont.replace(/Bold$/, '');
+                            nextFont = ROBLOX_FONTS.some(f => f.enumName === withoutBold)
+                              ? withoutBold
+                              : 'SourceSans';
+                          } else if (currentFont.endsWith('ExtraBold')) {
+                            const withoutBold = currentFont.replace(/ExtraBold$/, '');
+                            nextFont = ROBLOX_FONTS.some(f => f.enumName === withoutBold)
+                              ? withoutBold
+                              : 'SourceSans';
+                          } else {
+                            const withBold = `${currentFont}Bold`;
+                            if (ROBLOX_FONTS.some(f => f.enumName === withBold)) {
+                              nextFont = withBold;
+                            } else if (currentFont === 'Gotham') {
+                              nextFont = 'GothamBold';
+                            } else if (currentFont === 'BuilderSans') {
+                              nextFont = 'BuilderSansBold';
+                            } else if (currentFont === 'Arimo') {
+                              nextFont = 'ArimoBold';
+                            } else {
+                              nextFont = 'SourceSansBold';
+                            }
+                          }
+                          soundEffects.play('click');
+                          onUpdateElement({ ...selectedElement, font: nextFont });
+                        };
+
+                        return (
+                          <button
+                            type="button"
+                            onClick={handleToggleBold}
+                            title="Toggle Bold Font Variant"
+                            className={`flex-1 py-1 px-2 rounded border text-xs flex items-center justify-center space-x-1 transition font-semibold ${
+                              isBold
+                                ? 'bg-[#007acc] text-white border-[#007acc] shadow-xs'
+                                : 'bg-[#1e1e1e] border-[#3c3c3c] text-gray-300 hover:text-white hover:bg-[#2a2a2e]'
+                            }`}
+                          >
+                            <Bold className="w-3.5 h-3.5" />
+                            <span>Bold</span>
+                          </button>
+                        );
+                      })()}
+
+                      {/* TextScaled Toggle Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          soundEffects.play('click');
+                          onUpdateElement({
+                            ...selectedElement,
+                            textScaled: !selectedElement.textScaled
+                          });
+                        }}
+                        title="Toggle TextScaled (Auto-scale text size dynamically to fit container)"
+                        className={`flex-1 py-1 px-2 rounded border text-xs flex items-center justify-center space-x-1 transition font-semibold ${
+                          selectedElement.textScaled
+                            ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                            : 'bg-[#1e1e1e] border-[#3c3c3c] text-gray-300 hover:text-white hover:bg-[#2a2a2e]'
+                        }`}
+                      >
+                        <Maximize className="w-3.5 h-3.5 text-emerald-400" />
+                        <span>TextScaled</span>
+                      </button>
+                    </div>
+                  </div>
 
                 <div className="grid grid-cols-3 gap-2 items-center">
                   <span className="text-gray-400">TextXAlignment</span>

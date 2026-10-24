@@ -15,6 +15,7 @@ import {
   hexToRgb,
   PixelBounds
 } from '../utils/robloxMath';
+import { getFontDefinition } from '../data/robloxFonts';
 import { soundEffects } from '../utils/soundEffects';
 import {
   ZoomIn,
@@ -499,46 +500,69 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
         } ${el.type === 'ScrollingFrame' ? 'overflow-y-auto overflow-x-hidden' : 'overflow-hidden'}`}
       >
         {/* Element Content by Type */}
-        {(el.type === 'TextLabel' || el.type === 'TextButton') && (
-          <div
-            style={{
-              color: el.textColor || '#ffffff',
-              fontSize: `${el.textSize || 14}px`,
-              fontWeight: el.font?.includes('Bold') ? 'bold' : 'normal',
-              justifyContent:
-                el.textXAlignment === 'Left'
-                  ? 'flex-start'
-                  : el.textXAlignment === 'Right'
-                  ? 'flex-end'
-                  : 'center',
-              alignItems:
-                el.textYAlignment === 'Top'
-                  ? 'flex-start'
-                  : el.textYAlignment === 'Bottom'
-                  ? 'flex-end'
-                  : 'center'
-            }}
-            className="w-full h-full flex px-1 cursor-default truncate whitespace-pre-wrap leading-tight"
-          >
-            {el.text || ''}
-          </div>
-        )}
+        {(el.type === 'TextLabel' || el.type === 'TextButton') && (() => {
+          const fontDef = getFontDefinition(el.font);
+          const fontStyle: React.CSSProperties = {
+            fontFamily: fontDef.cssFamily,
+            fontWeight: fontDef.weight || (el.font?.includes('Bold') ? 'bold' : 'normal'),
+            fontStyle: (fontDef.style || (el.font?.includes('Italic') ? 'italic' : 'normal')) as any
+          };
 
-        {el.type === 'TextBox' && (
-          <div
-            style={{
-              color: el.textColor || '#ffffff',
-              fontSize: `${el.textSize || 14}px`
-            }}
-            className="w-full h-full flex items-center px-2 text-gray-300 font-mono"
-          >
-            {el.text || (
-              <span className="text-gray-500 italic">
-                {el.placeholderText || 'Type here...'}
-              </span>
-            )}
-          </div>
-        )}
+          // TextScaled simulation: dynamically scale font size to fit container height/width
+          const computedSize = el.textScaled
+            ? Math.max(10, Math.min(Math.round(bounds.h * 0.7), Math.round((bounds.w / Math.max(1, (el.text || 'A').length)) * 1.5)))
+            : (el.textSize || 14);
+
+          return (
+            <div
+              style={{
+                color: el.textColor || '#ffffff',
+                fontSize: `${computedSize}px`,
+                justifyContent:
+                  el.textXAlignment === 'Left'
+                    ? 'flex-start'
+                    : el.textXAlignment === 'Right'
+                    ? 'flex-end'
+                    : 'center',
+                alignItems:
+                  el.textYAlignment === 'Top'
+                    ? 'flex-start'
+                    : el.textYAlignment === 'Bottom'
+                    ? 'flex-end'
+                    : 'center',
+                ...fontStyle
+              }}
+              className="w-full h-full flex px-1.5 cursor-default truncate whitespace-pre-wrap leading-tight"
+            >
+              {el.text || ''}
+            </div>
+          );
+        })()}
+
+        {el.type === 'TextBox' && (() => {
+          const fontDef = getFontDefinition(el.font);
+          const computedSize = el.textScaled
+            ? Math.max(10, Math.min(Math.round(bounds.h * 0.65), 32))
+            : (el.textSize || 14);
+
+          return (
+            <div
+              style={{
+                color: el.textColor || '#ffffff',
+                fontSize: `${computedSize}px`,
+                fontFamily: fontDef.cssFamily,
+                fontWeight: fontDef.weight || 'normal'
+              }}
+              className="w-full h-full flex items-center px-2 text-gray-300"
+            >
+              {el.text || (
+                <span className="text-gray-500 italic">
+                  {el.placeholderText || 'Type here...'}
+                </span>
+              )}
+            </div>
+          );
+        })()}
 
         {(el.type === 'ImageLabel' || el.type === 'ImageButton') && (
           <div className="w-full h-full relative pointer-events-none">
