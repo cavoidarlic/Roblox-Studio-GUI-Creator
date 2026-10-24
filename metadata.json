@@ -1,0 +1,6 @@
+{
+  "name": "Roblox Studio GUI Creator",
+  "description": "Visual Roblox UI/GUI designer with UDim2 transform, interactive canvas, layouts, 3D SurfaceGui & BillboardGui simulation, and Luau code export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

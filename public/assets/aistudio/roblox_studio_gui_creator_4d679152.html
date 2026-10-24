@@ -1,0 +1,2430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Roblox Studio GUI Creator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            studio: {
+              bg: '#1e1e1e',
+              panel: '#252526',
+              header: '#2d2d2d',
+              border: '#3c3c3c',
+              hover: '#37373d',
+              accent: '#007acc',
+              robloxBlue: '#00a2ff',
+              text: '#cccccc',
+              input: '#3c3c3c',
+              danger: '#f44336'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1e1e1e; }
+    ::-webkit-scrollbar-thumb { background: #424242; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4f4f4f; }
+
+    .resize-handle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      background-color: #ffffff;
+      border: 1px solid #00a2ff;
+      border-radius: 2px;
+      z-index: 50;
+      box-shadow: 0 0 3px rgba(0,0,0,0.5);
+    }
+    .resize-handle::after {
+      content: '';
+      position: absolute;
+      top: -6px; left: -6px; right: -6px; bottom: -6px;
+    }
+    .active-wireframe {
+      outline: 2px dashed #00a2ff !important;
+      outline-offset: -1px;
+    }
+    .panning-active {
+      cursor: grabbing !important;
+      user-select: none !important;
+    }
+    .space-pan-ready {
+      cursor: grab !important;
+    }
+  </style>
+</head>
+<body class="bg-studio-bg text-studio-text font-sans h-screen flex flex-col select-none overflow-hidden">
+
+  <header class="h-11 bg-studio-header border-b border-studio-border flex items-center justify-between px-3 shrink-0 gap-2">
+    <div class="flex items-center space-x-2 shrink-0">
+      <div class="flex items-center space-x-1.5 font-bold text-white text-sm">
+        <i class="fa-solid fa-cube text-studio-robloxBlue text-base"></i>
+        <span class="hidden md:inline">Roblox GUI Studio</span>
+      </div>
+      <span class="text-xs text-gray-500">|</span>
+      <div class="flex items-center space-x-1 bg-studio-bg/60 p-0.5 rounded border border-studio-border text-xs">
+        <button id="tabScreenGui" onclick="switchRootGui('ScreenGui')" class="px-2 py-1 rounded text-white bg-studio-accent font-medium flex items-center space-x-1">
+          <i class="fa-solid fa-desktop text-xs"></i>
+          <span>ScreenGui</span>
+        </button>
+        <button id="tabSurfaceGui" onclick="switchRootGui('SurfaceGui')" class="px-2 py-1 rounded text-gray-400 hover:text-white hover:bg-studio-hover flex items-center space-x-1">
+          <i class="fa-solid fa-cube text-xs"></i>
+          <span>SurfaceGui</span>
+        </button>
+        <button id="tabBillboardGui" onclick="switchRootGui('BillboardGui')" class="px-2 py-1 rounded text-gray-400 hover:text-white hover:bg-studio-hover flex items-center space-x-1">
+          <i class="fa-solid fa-tag text-xs"></i>
+          <span>BillboardGui</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Prominent Save & Load Project File Controls -->
+    <div class="flex items-center space-x-2 text-xs shrink-0">
+      <div class="flex items-center space-x-1 bg-studio-bg p-1 rounded-md border border-studio-border shadow-sm">
+        <button onclick="saveProjectToFile()" title="Download current project as a .rbxgui file to your computer" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded font-semibold flex items-center space-x-1.5 shadow transition">
+          <i class="fa-solid fa-floppy-disk text-xs"></i>
+          <span>Save File</span>
+        </button>
+        <button onclick="triggerLoadFile()" title="Load a saved .rbxgui or .json file from your computer" class="px-2.5 py-1 bg-studio-panel hover:bg-studio-hover text-gray-200 border border-studio-border hover:text-white rounded font-medium flex items-center space-x-1.5 transition">
+          <i class="fa-solid fa-folder-open text-xs text-amber-400"></i>
+          <span>Load File</span>
+        </button>
+      </div>
+
+      <!-- Quick Conversion & Ratio Toolbar -->
+      <div class="hidden lg:flex items-center space-x-1 bg-studio-bg px-2 py-1 rounded border border-studio-border">
+        <span class="text-gray-400 text-[11px]">Selected:</span>
+        <button onclick="convertCurrentToScale()" title="Convert Offset to Scale (%)" class="px-2 py-0.5 bg-studio-panel hover:bg-studio-hover rounded text-studio-robloxBlue border border-studio-border font-medium flex items-center space-x-1">
+          <i class="fa-solid fa-percent text-[10px]"></i>
+          <span>To Scale</span>
+        </button>
+        <button onclick="convertCurrentToOffset()" title="Convert Scale to Offset (px)" class="px-2 py-0.5 bg-studio-panel hover:bg-studio-hover rounded text-gray-300 border border-studio-border flex items-center space-x-1">
+          <i class="fa-solid fa-ruler-combined text-[10px]"></i>
+          <span>To Offset</span>
+        </button>
+        <button onclick="toggleAspectRatioConstraint()" id="quickRatioBtn" title="Lock Aspect Ratio" class="px-2 py-0.5 bg-studio-panel hover:bg-studio-hover rounded text-gray-300 border border-studio-border flex items-center space-x-1">
+          <i class="fa-solid fa-lock text-[10px]"></i>
+          <span id="quickRatioText">Lock Ratio</span>
+        </button>
+      </div>
+
+      <!-- Export Luau Script Button -->
+      <button onclick="openExportModal()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-medium flex items-center space-x-1.5 shadow">
+        <i class="fa-solid fa-code text-xs"></i>
+        <span>Export Luau</span>
+      </button>
+    </div>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden">
+    <aside class="w-64 bg-studio-panel border-r border-studio-border flex flex-col shrink-0">
+      <div class="p-2 border-b border-studio-border bg-studio-header flex items-center justify-between text-xs font-semibold text-gray-300">
+        <span><i class="fa-solid fa-folder-tree mr-1 text-studio-robloxBlue"></i> Explorer</span>
+        <div class="flex items-center space-x-1">
+          <button onclick="saveProjectToFile()" title="Quick Save" class="text-gray-400 hover:text-white px-1 py-0.5 rounded">
+            <i class="fa-solid fa-floppy-disk text-[11px]"></i>
+          </button>
+          <button onclick="clearAllElements()" title="Clear Canvas" class="text-gray-400 hover:text-red-400 px-1 py-0.5 rounded">
+            <i class="fa-solid fa-trash-can text-[11px]"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Insert Menu -->
+      <div class="p-2 border-b border-studio-border bg-studio-bg/40">
+        <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+          <span>Insert Object</span>
+          <i class="fa-solid fa-plus text-[10px]"></i>
+        </div>
+        <div class="grid grid-cols-2 gap-1 text-xs">
+          <button onclick="addElement('Frame')" class="p-1.5 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left flex items-center space-x-1.5">
+            <i class="fa-regular fa-square text-blue-400"></i>
+            <span>Frame</span>
+          </button>
+          <button onclick="addElement('ScrollingFrame')" class="p-1.5 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left flex items-center space-x-1.5">
+            <i class="fa-solid fa-arrows-up-down text-purple-400"></i>
+            <span>ScrollFrame</span>
+          </button>
+          <button onclick="addElement('ViewportFrame')" class="p-1.5 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left flex items-center space-x-1.5">
+            <i class="fa-solid fa-cube text-emerald-400"></i>
+            <span>Viewport</span>
+          </button>
+          <button onclick="addElement('TextLabel')" class="p-1.5 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left flex items-center space-x-1.5">
+            <i class="fa-solid fa-font text-amber-400"></i>
+            <span>TextLabel</span>
+          </button>
+          <button onclick="addElement('TextButton')" class="p-1.5 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left flex items-center space-x-1.5">
+            <i class="fa-solid fa-hand-pointer text-yellow-400"></i>
+            <span>TextButton</span>
+          </button>
+          <button onclick="addElement('TextBox')" class="p-1.5 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left flex items-center space-x-1.5">
+            <i class="fa-solid fa-i-cursor text-teal-400"></i>
+            <span>TextBox</span>
+          </button>
+          <button onclick="addElement('ImageLabel')" class="p-1.5 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left flex items-center space-x-1.5">
+            <i class="fa-regular fa-image text-pink-400"></i>
+            <span>ImageLabel</span>
+          </button>
+          <button onclick="addElement('ImageButton')" class="p-1.5 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left flex items-center space-x-1.5">
+            <i class="fa-solid fa-image text-rose-400"></i>
+            <span>ImageButton</span>
+          </button>
+        </div>
+
+        <div class="mt-2 pt-2 border-t border-studio-border/50">
+          <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+            <span>Modifiers & Layouts</span>
+          </div>
+          <div class="grid grid-cols-2 gap-1 text-[11px]">
+            <button onclick="addModifierToSelected('UICorner')" class="p-1 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left truncate" title="Add rounded corners">
+              <i class="fa-regular fa-circle text-orange-400 mr-1"></i>UICorner
+            </button>
+            <button onclick="addModifierToSelected('UIStroke')" class="p-1 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left truncate" title="Add border outline">
+              <i class="fa-regular fa-square-full text-indigo-400 mr-1"></i>UIStroke
+            </button>
+            <button onclick="addModifierToSelected('UIGradient')" class="p-1 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left truncate" title="Add color gradient">
+              <i class="fa-solid fa-sliders text-cyan-400 mr-1"></i>UIGradient
+            </button>
+            <button onclick="addModifierToSelected('UIPadding')" class="p-1 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left truncate" title="Add internal padding">
+              <i class="fa-solid fa-arrows-split-up-and-left text-green-400 mr-1"></i>UIPadding
+            </button>
+            <button onclick="addModifierToSelected('UIAspectRatioConstraint')" class="p-1 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left truncate" title="Lock aspect ratio">
+              <i class="fa-solid fa-link text-blue-400 mr-1"></i>UIAspectLock
+            </button>
+            <button onclick="addModifierToSelected('UIListLayout')" class="p-1 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left truncate" title="Arrange children into a list">
+              <i class="fa-solid fa-list-ul text-red-400 mr-1"></i>UIListLayout
+            </button>
+            <button onclick="addModifierToSelected('UIGridLayout')" class="p-1 bg-studio-panel hover:bg-studio-hover border border-studio-border rounded text-left truncate col-span-2 text-yellow-300 font-medium" title="Arrange children into a grid of cells">
+              <i class="fa-solid fa-table-cells text-yellow-400 mr-1"></i>UIGridLayout
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Explorer Tree hierarchy -->
+      <div id="explorerTree" class="flex-1 overflow-y-auto p-1 text-xs select-none">
+        <!-- Dynamically rendered tree items -->
+      </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col bg-studio-bg overflow-hidden relative">
+      <div class="h-8 bg-studio-header border-b border-studio-border flex items-center justify-between px-3 text-xs shrink-0 z-10">
+        <div id="zoomControlsBar" class="flex items-center space-x-1.5 bg-studio-input/80 px-2 py-0.5 rounded border border-studio-border">
+          <button onclick="zoomCanvas(-0.1)" title="Zoom Out" class="px-1.5 py-0.5 hover:bg-studio-hover text-gray-300 rounded font-mono text-xs">
+            <i class="fa-solid fa-magnifying-glass-minus"></i>
+          </button>
+          <span id="zoomPercentLabel" class="font-mono text-[11px] text-gray-300 min-w-[42px] text-center">100%</span>
+          <button onclick="zoomCanvas(0.1)" title="Zoom In" class="px-1.5 py-0.5 hover:bg-studio-hover text-gray-300 rounded font-mono text-xs">
+            <i class="fa-solid fa-magnifying-glass-plus"></i>
+          </button>
+          <button onclick="resetZoom()" title="Reset Zoom to 100%" class="px-1.5 py-0.5 hover:bg-studio-hover text-gray-400 hover:text-white rounded text-[11px]">
+            100%
+          </button>
+          <div class="h-3 w-px bg-studio-border mx-0.5"></div>
+          <button onclick="resetPan()" title="Reset Pan Position (Center)" class="px-1.5 py-0.5 hover:bg-studio-hover text-gray-300 rounded text-[11px] flex items-center space-x-1">
+            <i class="fa-solid fa-arrows-to-dot text-studio-accent text-[11px]"></i>
+            <span>Center</span>
+          </button>
+          <button onclick="fitCanvasToScreen()" class="px-2 py-0.5 bg-studio-accent/20 hover:bg-studio-accent text-studio-robloxBlue hover:text-white rounded text-[11px] font-medium flex items-center space-x-1 transition" title="Fit canvas to workspace">
+            <i class="fa-solid fa-expand"></i>
+            <span>Fit Screen</span>
+          </button>
+          <span class="text-[10px] text-gray-500 hidden xl:inline-block pl-1 border-l border-studio-border">
+            <i class="fa-solid fa-computer-mouse text-gray-400 mr-1"></i>Mid-click or Space+Drag to pan
+          </span>
+        </div>
+
+        <div class="flex items-center space-x-4">
+          <div class="flex items-center space-x-1.5">
+            <span class="text-gray-400 text-[11px]">Aspect:</span>
+            <span class="bg-studio-panel px-1.5 py-0.5 rounded border border-studio-border text-studio-robloxBlue font-mono text-[11px]">16:9</span>
+          </div>
+          <div class="flex items-center space-x-1.5">
+            <span class="text-gray-400 text-[11px]">Device:</span>
+            <select id="viewportPreset" onchange="changeViewportPreset(this.value)" class="bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-xs text-white focus:outline-none">
+              <option value="1280x720">1280 x 720 (16:9 Standard HD)</option>
+              <option value="1920x1080">1920 x 1080 (16:9 Full HD)</option>
+              <option value="844x390">844 x 390 (iPhone 13 / 14)</option>
+              <option value="1024x768">1024 x 768 (iPad 4:3)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div id="viewportContainer" class="flex-1 overflow-hidden relative flex items-center justify-center p-4">
+        <div id="canvasScaleContainer" class="relative transition-transform duration-75 origin-center will-change-transform">
+          <div id="studioCanvas" class="relative bg-black shadow-2xl border border-gray-700 overflow-hidden select-none" style="width: 1280px; height: 720px;">
+            <!-- Roblox Player Safe Area & Top Bar Mockup -->
+            <div id="canvasTopBar" class="h-6 w-full bg-black/40 border-b border-white/5 flex items-center justify-between px-2 text-[10px] text-gray-400 pointer-events-none z-30">
+              <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-shield-cat text-gray-500"></i>
+                <span class="font-mono">Roblox Player Mockup (16:9)</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-signal"></i>
+                <i class="fa-solid fa-wifi"></i>
+                <span>60 FPS</span>
+              </div>
+            </div>
+
+            <!-- Root Container for Elements -->
+            <div id="elementsContainer" class="absolute inset-0 top-6 overflow-hidden pointer-events-auto"></div>
+
+            <!-- Selection Box & Handles -->
+            <div id="selectionBox" class="absolute pointer-events-none hidden border-2 border-studio-robloxBlue z-40">
+              <div class="resize-handle pointer-events-auto cursor-nwse-resize" data-direction="nw" style="top: -5px; left: -5px;"></div>
+              <div class="resize-handle pointer-events-auto cursor-nesw-resize" data-direction="ne" style="top: -5px; right: -5px;"></div>
+              <div class="resize-handle pointer-events-auto cursor-nwse-resize" data-direction="se" style="bottom: -5px; right: -5px;"></div>
+              <div class="resize-handle pointer-events-auto cursor-nesw-resize" data-direction="sw" style="bottom: -5px; left: -5px;"></div>
+              <div class="resize-handle pointer-events-auto cursor-ns-resize" data-direction="n" style="top: -5px; left: calc(50% - 5px);"></div>
+              <div class="resize-handle pointer-events-auto cursor-ew-resize" data-direction="e" style="top: calc(50% - 5px); right: -5px;"></div>
+              <div class="resize-handle pointer-events-auto cursor-ns-resize" data-direction="s" style="bottom: -5px; left: calc(50% - 5px);"></div>
+              <div class="resize-handle pointer-events-auto cursor-ew-resize" data-direction="w" style="top: calc(50% - 5px); left: -5px;"></div>
+              <div id="selectionBadge" class="absolute -top-6 left-0 bg-studio-robloxBlue text-black font-mono text-[10px] font-bold px-1.5 py-0.5 rounded shadow whitespace-nowrap">
+                Frame
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3D SurfaceGui & BillboardGui Preview Area -->
+      <div id="threePreviewContainer" class="absolute inset-0 bg-[#121214] hidden z-20 flex flex-col">
+        <div class="p-2 bg-studio-header border-b border-studio-border flex items-center justify-between text-xs">
+          <div class="flex items-center space-x-2">
+            <span class="text-studio-robloxBlue font-bold" id="threePreviewTitle">SurfaceGui 3D World Preview</span>
+            <span class="text-gray-400 text-[11px]">(Click & drag to rotate camera, scroll to zoom)</span>
+          </div>
+          <button onclick="switchRootGui('ScreenGui')" class="px-2 py-1 bg-studio-panel hover:bg-studio-hover rounded text-xs border border-studio-border">
+            <i class="fa-solid fa-arrow-left mr-1"></i> Return to 2D Canvas
+          </button>
+        </div>
+        <div class="flex-1 relative" id="threeCanvasMount"></div>
+      </div>
+    </main>
+
+    <aside class="w-80 bg-studio-panel border-l border-studio-border flex flex-col shrink-0">
+      <div class="p-2 border-b border-studio-border bg-studio-header flex items-center justify-between text-xs font-semibold text-gray-300">
+        <span><i class="fa-solid fa-sliders mr-1 text-studio-robloxBlue"></i> Properties</span>
+        <span id="selectedTypeName" class="text-gray-400 font-mono text-[11px]">ScreenGui</span>
+      </div>
+      <div id="propertiesPanel" class="flex-1 overflow-y-auto p-3 text-xs space-y-4"></div>
+    </aside>
+  </div>
+
+  <div id="exportModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-studio-panel border border-studio-border rounded-lg shadow-2xl w-full max-w-3xl flex flex-col max-h-[85vh] overflow-hidden">
+      <div class="p-3 bg-studio-header border-b border-studio-border flex items-center justify-between text-sm font-semibold text-white">
+        <div class="flex items-center space-x-2">
+          <i class="fa-solid fa-code text-studio-robloxBlue"></i>
+          <span>Generated Roblox Luau Script</span>
+        </div>
+        <button onclick="closeExportModal()" class="text-gray-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-base"></i>
+        </button>
+      </div>
+
+      <div class="p-3 bg-studio-bg border-b border-studio-border flex items-center justify-between text-xs text-gray-300">
+        <span>Ready to paste into a LocalScript in <code>StarterPlayerScripts</code> or <code>StarterGui</code>.</span>
+        <button onclick="copyGeneratedLuau()" id="copyCodeBtn" class="px-3 py-1 bg-studio-accent hover:bg-blue-600 text-white rounded font-medium flex items-center space-x-1">
+          <i class="fa-regular fa-copy"></i>
+          <span>Copy to Clipboard</span>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-auto p-3 bg-[#1e1e1e]">
+        <pre><code id="exportCodeBlock" class="text-xs text-green-400 font-mono select-text whitespace-pre leading-relaxed"></code></pre>
+      </div>
+
+      <div class="p-2 bg-studio-header border-t border-studio-border flex justify-end text-xs">
+        <button onclick="closeExportModal()" class="px-4 py-1.5 bg-studio-panel hover:bg-studio-hover rounded text-white border border-studio-border">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Inputs for Local File Loading and Image Upload -->
+  <input type="file" id="projectFileInput" accept=".rbxgui,.json" class="hidden" onchange="handleProjectFileLoaded(event)">
+  <input type="file" id="localImageInput" accept="image/*" class="hidden" onchange="handleImageFileSelected(event)">
+
+  <!-- Toast Notification Bar -->
+  <div id="toastNotification" class="fixed bottom-4 right-4 bg-studio-accent text-white px-4 py-2 rounded shadow-lg text-xs font-medium transition-opacity duration-300 opacity-0 pointer-events-none z-50 flex items-center space-x-2">
+    <i class="fa-solid fa-circle-check"></i>
+    <span id="toastMessage">Done</span>
+  </div>
+
+  <script>
+    const state = {
+      rootType: 'ScreenGui',
+      rootProperties: {
+        ScreenGui: {
+          Name: 'ScreenGui',
+          ResetOnSpawn: true,
+          IgnoreGuiInset: false,
+          ZIndexBehavior: 'Sibling'
+        },
+        SurfaceGui: {
+          Name: 'SurfaceGui',
+          Face: 'Front',
+          CanvasSize: { x: 800, y: 600 },
+          AlwaysOnTop: false,
+          AdorneePart: 'workspace.Part'
+        },
+        BillboardGui: {
+          Name: 'BillboardGui',
+          Size: { scaleX: 0, offsetX: 200, scaleY: 0, offsetY: 50 },
+          StudsOffset: { x: 0, y: 3, z: 0 },
+          AlwaysOnTop: true,
+          MaxDistance: 100,
+          AdorneePart: 'Character.Head'
+        }
+      },
+      elements: [],
+      selectedId: null,
+      selectedModifierKey: null,
+      viewport: {
+        width: 1280,
+        height: 720,
+        preset: '1280x720',
+        zoom: 1.0,
+        panX: 0,
+        panY: 0
+      },
+      nextId: 1
+    };
+
+    function hexToRgb(hex) {
+      hex = (hex || '#393939').replace('#', '');
+      if (hex.length === 3) {
+        hex = hex.split('').map(c => c + c).join('');
+      }
+      const num = parseInt(hex, 16);
+      return {
+        r: (num >> 16) & 255,
+        g: (num >> 8) & 255,
+        b: num & 255
+      };
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById('toastNotification');
+      const text = document.getElementById('toastMessage');
+      if (!toast || !text) return;
+      text.innerText = msg;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 2500);
+    }
+
+    function saveProjectToFile() {
+      const projectData = {
+        app: 'RobloxGUIStudio',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        rootType: state.rootType,
+        rootProperties: state.rootProperties,
+        viewport: state.viewport,
+        elements: state.elements,
+        nextId: state.nextId
+      };
+      const jsonStr = JSON.stringify(projectData, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `roblox_gui_${state.rootType.toLowerCase()}_${Date.now()}.rbxgui`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Project file saved! (.rbxgui)');
+    }
+
+    function triggerLoadFile() {
+      const input = document.getElementById('projectFileInput');
+      if (input) {
+        input.value = '';
+        input.click();
+      }
+    }
+
+    function handleProjectFileLoaded(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.elements || !Array.isArray(parsed.elements)) {
+            throw new Error('Invalid project structure');
+          }
+          state.elements = parsed.elements;
+          if (parsed.rootType) state.rootType = parsed.rootType;
+          if (parsed.rootProperties) state.rootProperties = parsed.rootProperties;
+          if (parsed.nextId) state.nextId = parsed.nextId;
+          if (parsed.viewport && parsed.viewport.width) {
+            state.viewport.width = parsed.viewport.width;
+            state.viewport.height = parsed.viewport.height;
+            state.viewport.preset = parsed.viewport.preset || '1280x720';
+            const presetSelect = document.getElementById('viewportPreset');
+            if (presetSelect) presetSelect.value = state.viewport.preset;
+          }
+          state.selectedId = null;
+          state.selectedModifierKey = null;
+          switchRootGui(state.rootType);
+          renderAll();
+          fitCanvasToScreen();
+          showToast('Project loaded successfully!');
+        } catch (err) {
+          showToast('Failed to load file: Invalid format');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function applyZoom() {
+      const scaleContainer = document.getElementById('canvasScaleContainer');
+      const zoomLabel = document.getElementById('zoomPercentLabel');
+      if (scaleContainer) {
+        scaleContainer.style.transform = `translate(${state.viewport.panX}px, ${state.viewport.panY}px) scale(${state.viewport.zoom})`;
+      }
+      if (zoomLabel) {
+        zoomLabel.innerText = Math.round(state.viewport.zoom * 100) + "%";
+      }
+      updateSelectionBox();
+    }
+
+    function zoomCanvas(delta) {
+      state.viewport.zoom = Math.max(0.2, Math.min(2.5, Number((state.viewport.zoom + delta).toFixed(2))));
+      applyZoom();
+    }
+
+    function resetZoom() {
+      state.viewport.zoom = 1.0;
+      state.viewport.panX = 0;
+      state.viewport.panY = 0;
+      applyZoom();
+    }
+
+    function resetPan() {
+      state.viewport.panX = 0;
+      state.viewport.panY = 0;
+      applyZoom();
+      showToast("Canvas centered");
+    }
+
+    function fitCanvasToScreen() {
+      const container = document.getElementById('viewportContainer');
+      if (!container) return;
+
+      const paddingHorizontal = 64;
+      const paddingVertical = 64;
+      const availW = Math.max(200, container.clientWidth - paddingHorizontal);
+      const availH = Math.max(200, container.clientHeight - paddingVertical);
+
+      const targetW = state.viewport.width;
+      const targetH = state.viewport.height;
+
+      const scaleX = availW / targetW;
+      const scaleY = availH / targetH;
+      const fitZoom = Math.min(scaleX, scaleY);
+
+      state.viewport.zoom = Math.max(0.2, Math.min(1.5, Number(fitZoom.toFixed(2))));
+      state.viewport.panX = 0;
+      state.viewport.panY = 0;
+      applyZoom();
+      showToast("Canvas fitted (" + Math.round(state.viewport.zoom * 100) + "%)");
+    }
+
+    function setViewportSize(w, h) {
+      state.viewport.width = w;
+      state.viewport.height = h;
+      const canvas = document.getElementById('studioCanvas');
+      if (canvas) {
+        canvas.style.width = w + 'px';
+        canvas.style.height = h + 'px';
+      }
+      renderAll();
+    }
+
+    function changeViewportPreset(val) {
+      state.viewport.preset = val;
+      const parts = val.split('x').map(Number);
+      if (parts.length === 2) {
+        setViewportSize(parts[0], parts[1]);
+        fitCanvasToScreen();
+      }
+    }
+
+    function createDefaultElement(type, parentId = null) {
+      const id = 'el_' + (state.nextId++);
+      const name = type + (state.elements.filter(e => e.type === type).length + 1);
+
+      const base = {
+        id: id,
+        name: name,
+        type: type,
+        parentId: parentId,
+        visible: true,
+        zIndex: 1,
+        position: { scaleX: 0.1, offsetX: 0, scaleY: 0.1, offsetY: 0 },
+        size: { scaleX: 0, offsetX: 200, scaleY: 0, offsetY: 100 },
+        backgroundColor: '#393939',
+        backgroundTransparency: 0,
+        borderSizePixel: 0,
+        borderColor: '#000000',
+        anchorPoint: { x: 0, y: 0 },
+        modifiers: {}
+      };
+
+      if (type === 'TextLabel') {
+        base.text = 'Label';
+        base.textColor = '#ffffff';
+        base.textSize = 18;
+        base.font = 'SourceSans';
+        base.textScaled = false;
+        base.textXAlignment = 'Center';
+        base.textYAlignment = 'Center';
+        base.backgroundColor = '#2c2c2c';
+        base.backgroundTransparency = 1;
+      } else if (type === 'TextButton') {
+        base.text = 'Button';
+        base.textColor = '#ffffff';
+        base.textSize = 18;
+        base.font = 'SourceSansBold';
+        base.textScaled = false;
+        base.backgroundColor = '#00a2ff';
+        base.backgroundTransparency = 0;
+        base.size = { scaleX: 0, offsetX: 160, scaleY: 0, offsetY: 45 };
+      } else if (type === 'TextBox') {
+        base.text = '';
+        base.placeholderText = 'Type here...';
+        base.placeholderColor = '#888888';
+        base.textColor = '#ffffff';
+        base.textSize = 16;
+        base.font = 'SourceSans';
+        base.backgroundColor = '#1f1f1f';
+        base.borderSizePixel = 1;
+        base.borderColor = '#4a4a4a';
+        base.size = { scaleX: 0, offsetX: 200, scaleY: 0, offsetY: 36 };
+      } else if (type === 'ImageLabel' || type === 'ImageButton') {
+        base.image = 'https://placehold.co/300x200/22222b/ffffff?text=Roblox+Image';
+        base.imageColor = '#ffffff';
+        base.imageTransparency = 0;
+        base.scaleType = 'Stretch';
+        base.sliceCenter = { minX: 10, minY: 10, maxX: 50, maxY: 50 };
+        base.tileSize = { x: 64, y: 64 };
+        base.resampleMode = 'Default';
+        base.backgroundColor = '#181818';
+        base.backgroundTransparency = 1;
+        base.size = { scaleX: 0, offsetX: 150, scaleY: 0, offsetY: 150 };
+      } else if (type === 'ScrollingFrame') {
+        base.canvasSize = { scaleX: 0, offsetX: 0, scaleY: 2, offsetY: 0 };
+        base.scrollBarThickness = 8;
+        base.scrollBarColor = '#00a2ff';
+        base.backgroundColor = '#242424';
+        base.size = { scaleX: 0, offsetX: 240, scaleY: 0, offsetY: 220 };
+      } else if (type === 'ViewportFrame') {
+        base.backgroundColor = '#151515';
+        base.lightColor = '#ffffff';
+        base.ambient = '#707070';
+        base.size = { scaleX: 0, offsetX: 180, scaleY: 0, offsetY: 180 };
+      }
+
+      return base;
+    }
+
+    function addElement(type) {
+      let parentId = null;
+      if (state.selectedId) {
+        const sel = state.elements.find(e => e.id === state.selectedId);
+        if (sel && ['Frame', 'ScrollingFrame', 'ViewportFrame'].includes(sel.type)) {
+          parentId = sel.id;
+        }
+      }
+      const el = createDefaultElement(type, parentId);
+      state.elements.push(el);
+      state.selectedId = el.id;
+      state.selectedModifierKey = null;
+      renderAll();
+      showToast('Added ' + type);
+    }
+
+    function clearAllElements() {
+      if (state.elements.length === 0) return;
+      state.elements = [];
+      state.selectedId = null;
+      state.selectedModifierKey = null;
+      renderAll();
+      showToast('Cleared canvas');
+    }
+
+    function addModifierToSelected(modType) {
+      if (!state.selectedId) {
+        showToast('Please select a GUI element first');
+        return;
+      }
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (!el) return;
+
+      if (!el.modifiers) el.modifiers = {};
+
+      if (modType === 'UICorner') {
+        el.modifiers.UICorner = { cornerRadiusOffset: 8, cornerRadiusScale: 0 };
+      } else if (modType === 'UIStroke') {
+        el.modifiers.UIStroke = { color: '#00a2ff', thickness: 2, transparency: 0, applyStrokeMode: 'Border' };
+      } else if (modType === 'UIGradient') {
+        el.modifiers.UIGradient = { color1: '#ff007f', color2: '#7928ca', rotation: 45 };
+      } else if (modType === 'UIPadding') {
+        el.modifiers.UIPadding = { top: 8, bottom: 8, left: 8, right: 8 };
+      } else if (modType === 'UIAspectRatioConstraint') {
+        const bounds = getElementPixelBounds(el);
+        const ratio = Number((bounds.w / Math.max(1, bounds.h)).toFixed(4));
+        el.modifiers.UIAspectRatioConstraint = {
+          aspectRatio: ratio,
+          dominantAxis: 'Width',
+          aspectType: 'FitWithinMaxSize'
+        };
+      } else if (modType === 'UIListLayout') {
+        delete el.modifiers.UIGridLayout;
+        el.modifiers.UIListLayout = {
+          fillDirection: 'Vertical',
+          padding: 8,
+          horizontalAlignment: 'Left',
+          verticalAlignment: 'Top'
+        };
+      } else if (modType === 'UIGridLayout') {
+        delete el.modifiers.UIListLayout;
+        el.modifiers.UIGridLayout = {
+          cellPaddingX: 8,
+          cellPaddingY: 8,
+          cellSizeX: 80,
+          cellSizeY: 80,
+          fillDirection: 'Horizontal',
+          maxCells: 0
+        };
+      }
+
+      state.selectedModifierKey = modType;
+      renderAll();
+      showToast('Added ' + modType + ' to ' + el.name);
+    }
+
+    function removeModifier(elId, modType) {
+      const el = state.elements.find(e => e.id === elId);
+      if (el && el.modifiers && el.modifiers[modType]) {
+        delete el.modifiers[modType];
+        if (state.selectedModifierKey === modType) {
+          state.selectedModifierKey = null;
+        }
+        renderAll();
+        showToast('Removed ' + modType);
+      }
+    }
+
+    function getParentPixelSize(el) {
+      if (!el.parentId) {
+        return {
+          w: state.viewport.width,
+          h: state.viewport.height - 24
+        };
+      }
+      const parent = state.elements.find(e => e.id === el.parentId);
+      if (!parent) {
+        return {
+          w: state.viewport.width,
+          h: state.viewport.height - 24
+        };
+      }
+      return getElementPixelBounds(parent);
+    }
+
+    function getElementPixelBounds(el) {
+      const parentSize = getParentPixelSize(el);
+      let w = (el.size.scaleX * parentSize.w) + el.size.offsetX;
+      let h = (el.size.scaleY * parentSize.h) + el.size.offsetY;
+
+      if (el.modifiers && el.modifiers.UIAspectRatioConstraint) {
+        const ratio = el.modifiers.UIAspectRatioConstraint.aspectRatio || 1;
+        const dominant = el.modifiers.UIAspectRatioConstraint.dominantAxis || 'Width';
+        if (dominant === 'Width') {
+          h = w / ratio;
+        } else {
+          w = h * ratio;
+        }
+      }
+
+      let x = (el.position.scaleX * parentSize.w) + el.position.offsetX;
+      let y = (el.position.scaleY * parentSize.h) + el.position.offsetY;
+
+      x -= (el.anchorPoint ? el.anchorPoint.x : 0) * w;
+      y -= (el.anchorPoint ? el.anchorPoint.y : 0) * h;
+
+      return { x, y, w: Math.max(10, w), h: Math.max(10, h) };
+    }
+
+    function convertCurrentToScale() {
+      if (!state.selectedId) {
+        showToast('Select an element first');
+        return;
+      }
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (!el) return;
+
+      const parentSize = getParentPixelSize(el);
+      const bounds = getElementPixelBounds(el);
+
+      el.size.scaleX = Number((bounds.w / parentSize.w).toFixed(4));
+      el.size.offsetX = 0;
+      el.size.scaleY = Number((bounds.h / parentSize.h).toFixed(4));
+      el.size.offsetY = 0;
+
+      el.position.scaleX = Number((bounds.x / parentSize.w).toFixed(4));
+      el.position.offsetX = 0;
+      el.position.scaleY = Number((bounds.y / parentSize.h).toFixed(4));
+      el.position.offsetY = 0;
+
+      renderAll();
+      showToast('Converted ' + el.name + ' to Scale');
+    }
+
+    function convertCurrentToOffset() {
+      if (!state.selectedId) {
+        showToast('Select an element first');
+        return;
+      }
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (!el) return;
+
+      const bounds = getElementPixelBounds(el);
+
+      el.size.scaleX = 0;
+      el.size.offsetX = Math.round(bounds.w);
+      el.size.scaleY = 0;
+      el.size.offsetY = Math.round(bounds.h);
+
+      el.position.scaleX = 0;
+      el.position.offsetX = Math.round(bounds.x);
+      el.position.scaleY = 0;
+      el.position.offsetY = Math.round(bounds.y);
+
+      renderAll();
+      showToast('Converted ' + el.name + ' to Offset');
+    }
+
+    function toggleAspectRatioConstraint() {
+      if (!state.selectedId) {
+        showToast('Select an element first');
+        return;
+      }
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (!el) return;
+
+      if (!el.modifiers) el.modifiers = {};
+
+      if (el.modifiers.UIAspectRatioConstraint) {
+        delete el.modifiers.UIAspectRatioConstraint;
+        if (state.selectedModifierKey === 'UIAspectRatioConstraint') {
+          state.selectedModifierKey = null;
+        }
+        showToast('Aspect Ratio Unlocked');
+      } else {
+        const bounds = getElementPixelBounds(el);
+        const ratio = Number((bounds.w / Math.max(1, bounds.h)).toFixed(4));
+        el.modifiers.UIAspectRatioConstraint = {
+          aspectRatio: ratio,
+          dominantAxis: 'Width',
+          aspectType: 'FitWithinMaxSize'
+        };
+        state.selectedModifierKey = 'UIAspectRatioConstraint';
+        showToast('Locked Ratio (' + ratio + ':1)');
+      }
+      renderAll();
+    }
+
+    function renderCanvasElements() {
+      const container = document.getElementById('elementsContainer');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (state.elements.length === 0) {
+        container.innerHTML = `
+          <div class="h-full w-full flex flex-col items-center justify-center text-gray-500 pointer-events-none space-y-2">
+            <i class="fa-solid fa-shapes text-4xl text-gray-700"></i>
+            <span class="text-sm">Empty Canvas</span>
+            <span class="text-xs text-gray-600">Click an object on the left to add a Frame, Button, or Label</span>
+          </div>
+        `;
+        updateSelectionBox();
+        return;
+      }
+
+      function renderNode(el, isInsideLayout = false, layoutOverrideBounds = null) {
+        const bounds = layoutOverrideBounds || getElementPixelBounds(el);
+        const node = document.createElement('div');
+        node.id = 'dom_' + el.id;
+        node.className = 'absolute transition-none ' + (state.selectedId === el.id ? 'active-wireframe' : '');
+        node.style.left = bounds.x + 'px';
+        node.style.top = bounds.y + 'px';
+        node.style.width = bounds.w + 'px';
+        node.style.height = bounds.h + 'px';
+        node.style.zIndex = el.zIndex || 1;
+
+        // Isolate BackgroundTransparency so it does NOT make children or images transparent!
+        const bgRgb = hexToRgb(el.backgroundColor || '#393939');
+        const bgTrans = el.backgroundTransparency !== undefined ? el.backgroundTransparency : 0;
+        const bgAlpha = Math.max(0, Math.min(1, 1 - bgTrans));
+        node.style.backgroundColor = `rgba(${bgRgb.r}, ${bgRgb.g}, ${bgRgb.b}, ${bgAlpha})`;
+
+        if (el.borderSizePixel > 0) {
+          node.style.border = `${el.borderSizePixel}px solid ${el.borderColor || '#000000'}`;
+        }
+
+        // Apply Modifiers
+        if (el.modifiers) {
+          if (el.modifiers.UICorner) {
+            node.style.borderRadius = (el.modifiers.UICorner.cornerRadiusOffset || 0) + 'px';
+          }
+          if (el.modifiers.UIStroke) {
+            const stroke = el.modifiers.UIStroke;
+            node.style.outline = `${stroke.thickness || 1}px solid ${stroke.color || '#00a2ff'}`;
+            node.style.outlineOffset = stroke.applyStrokeMode === 'Border' ? `-${stroke.thickness || 1}px` : '0px';
+          }
+          if (el.modifiers.UIGradient) {
+            const g = el.modifiers.UIGradient;
+            node.style.backgroundImage = `linear-gradient(${g.rotation || 0}deg, ${g.color1 || '#ff007f'}, ${g.color2 || '#7928ca'})`;
+          }
+          if (el.modifiers.UIPadding) {
+            const p = el.modifiers.UIPadding;
+            node.style.padding = `${p.top || 0}px ${p.right || 0}px ${p.bottom || 0}px ${p.left || 0}px`;
+          }
+        }
+
+        if (el.type === 'TextLabel' || el.type === 'TextButton') {
+          node.style.color = el.textColor || '#ffffff';
+          node.style.fontSize = (el.textSize || 14) + 'px';
+          node.style.display = 'flex';
+          node.style.alignItems = el.textYAlignment === 'Top' ? 'flex-start' : (el.textYAlignment === 'Bottom' ? 'flex-end' : 'center');
+          node.style.justifyContent = el.textXAlignment === 'Left' ? 'flex-start' : (el.textXAlignment === 'Right' ? 'flex-end' : 'center');
+          node.style.fontWeight = el.font && el.font.includes('Bold') ? 'bold' : 'normal';
+          node.innerText = el.text || '';
+          if (el.type === 'TextButton') node.style.cursor = 'pointer';
+        } else if (el.type === 'TextBox') {
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = el.text || '';
+          input.placeholder = el.placeholderText || 'Type here...';
+          input.className = 'w-full h-full bg-transparent border-none text-white px-2 focus:outline-none pointer-events-none';
+          input.style.fontSize = (el.textSize || 14) + 'px';
+          input.style.color = el.textColor || '#ffffff';
+          node.appendChild(input);
+        } else if (el.type === 'ImageLabel' || el.type === 'ImageButton') {
+          const img = document.createElement('img');
+          img.src = el.image || '';
+          img.className = 'w-full h-full pointer-events-none select-none';
+          
+          // ImageTransparency strictly controls the image opacity itself
+          const imgTrans = el.imageTransparency !== undefined ? el.imageTransparency : 0;
+          img.style.opacity = (1 - imgTrans);
+
+          if (el.resampleMode === 'Pixelated') {
+            img.style.imageRendering = 'pixelated';
+          } else {
+            img.style.imageRendering = 'auto';
+          }
+
+          const scaleType = el.scaleType || 'Stretch';
+          if (scaleType === 'Fit') {
+            img.style.objectFit = 'contain';
+            img.style.objectPosition = 'center';
+            node.appendChild(img);
+          } else if (scaleType === 'Crop') {
+            img.style.objectFit = 'cover';
+            img.style.objectPosition = 'center';
+            node.style.overflow = 'hidden';
+            node.appendChild(img);
+          } else if (scaleType === 'Tile') {
+            const tileW = (el.tileSize && el.tileSize.x) ? el.tileSize.x : 64;
+            const tileH = (el.tileSize && el.tileSize.y) ? el.tileSize.y : 64;
+            node.style.backgroundImage = `url("${el.image || ''}")`;
+            node.style.backgroundRepeat = 'repeat';
+            node.style.backgroundSize = `${tileW}px ${tileH}px`;
+            node.style.backgroundPosition = '0 0';
+          } else if (scaleType === 'Slice') {
+            const sc = el.sliceCenter || { minX: 12, minY: 12, maxX: 40, maxY: 40 };
+            const top = sc.minY || 12;
+            const left = sc.minX || 12;
+            const right = Math.max(1, (sc.maxX || 40) - left);
+            const bottom = Math.max(1, (sc.maxY || 40) - top);
+
+            node.style.borderStyle = 'solid';
+            node.style.borderWidth = `${top}px ${right}px ${bottom}px ${left}px`;
+            node.style.borderImageSource = `url("${el.image || ''}")`;
+            node.style.borderImageSlice = `${top} ${right} ${bottom} ${left} fill`;
+            node.style.borderImageRepeat = 'stretch';
+          } else {
+            img.style.objectFit = 'fill';
+            node.appendChild(img);
+          }
+
+          if (el.type === 'ImageButton') node.style.cursor = 'pointer';
+        } else if (el.type === 'ScrollingFrame') {
+          node.style.overflowY = 'auto';
+          node.style.overflowX = 'hidden';
+        } else if (el.type === 'ViewportFrame') {
+          node.className += ' flex items-center justify-center bg-gray-900 overflow-hidden';
+          const badge = document.createElement('div');
+          badge.className = 'text-[11px] text-emerald-400 font-mono flex items-center space-x-1 bg-black/60 px-2 py-1 rounded pointer-events-none';
+          badge.innerHTML = '<i class="fa-solid fa-cube animate-spin text-[10px]"></i> <span>ViewportFrame 3D</span>';
+          node.appendChild(badge);
+        }
+
+        // Selection & Drag handling
+        node.addEventListener('mousedown', function(e) {
+          if (e.button !== 0) return;
+          e.stopPropagation();
+          selectElement(el.id);
+          if (!isInsideLayout) {
+            startDraggingElement(el, e);
+          }
+        });
+
+        // Child rendering with UIListLayout and UIGridLayout support
+        const children = state.elements.filter(child => child.parentId === el.id);
+
+        if (el.modifiers && el.modifiers.UIListLayout && children.length > 0) {
+          const layout = el.modifiers.UIListLayout;
+          const isVert = layout.fillDirection === 'Vertical';
+          const pad = layout.padding || 0;
+          let currentOffset = 0;
+
+          children.forEach(child => {
+            const childBounds = getElementPixelBounds(child);
+            const overrideBounds = {
+              x: isVert ? 0 : currentOffset,
+              y: isVert ? currentOffset : 0,
+              w: childBounds.w,
+              h: childBounds.h
+            };
+            currentOffset += (isVert ? childBounds.h : childBounds.w) + pad;
+            const childDom = renderNode(child, true, overrideBounds);
+            node.appendChild(childDom);
+          });
+        } else if (el.modifiers && el.modifiers.UIGridLayout && children.length > 0) {
+          const grid = el.modifiers.UIGridLayout;
+          const cellW = grid.cellSizeX || 80;
+          const cellH = grid.cellSizeY || 80;
+          const padX = grid.cellPaddingX || 8;
+          const padY = grid.cellPaddingY || 8;
+          const maxCols = grid.maxCells > 0 ? grid.maxCells : Math.max(1, Math.floor((bounds.w + padX) / (cellW + padX)));
+
+          children.forEach((child, idx) => {
+            const col = idx % maxCols;
+            const row = Math.floor(idx / maxCols);
+            const overrideBounds = {
+              x: col * (cellW + padX),
+              y: row * (cellH + padY),
+              w: cellW,
+              h: cellH
+            };
+            const childDom = renderNode(child, true, overrideBounds);
+            node.appendChild(childDom);
+          });
+        } else {
+          children.forEach(child => {
+            const childDom = renderNode(child, false, null);
+            node.appendChild(childDom);
+          });
+        }
+
+        return node;
+      }
+
+      const rootElements = state.elements.filter(e => !e.parentId);
+      rootElements.forEach(el => {
+        const dom = renderNode(el);
+        container.appendChild(dom);
+      });
+
+      updateSelectionBox();
+    }
+
+    function selectElement(id, modKey = null) {
+      state.selectedId = id;
+      state.selectedModifierKey = modKey;
+      renderCanvasElements();
+      renderExplorerTree();
+      renderPropertiesPanel();
+      updateToolbarState();
+    }
+
+    function updateToolbarState() {
+      const quickBtn = document.getElementById('quickRatioBtn');
+      const quickText = document.getElementById('quickRatioText');
+      if (!quickBtn || !quickText) return;
+
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (el && el.modifiers && el.modifiers.UIAspectRatioConstraint) {
+        quickBtn.className = 'px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/40 rounded flex items-center space-x-1';
+        quickText.innerText = 'Unlock Ratio';
+      } else {
+        quickBtn.className = 'px-2 py-0.5 bg-studio-panel hover:bg-studio-hover rounded text-gray-300 border border-studio-border flex items-center space-x-1';
+        quickText.innerText = 'Lock Ratio';
+      }
+    }
+
+    function updateSelectionBox() {
+      const box = document.getElementById('selectionBox');
+      const badge = document.getElementById('selectionBadge');
+      if (!box || !badge) return;
+
+      if (!state.selectedId || state.rootType !== 'ScreenGui') {
+        box.classList.add('hidden');
+        return;
+      }
+
+      const el = state.elements.find(e => e.id === state.selectedId);
+      const targetDom = document.getElementById('dom_' + state.selectedId);
+      const canvas = document.getElementById('studioCanvas');
+
+      if (!el || !targetDom || !canvas) {
+        box.classList.add('hidden');
+        return;
+      }
+
+      const canvasRect = canvas.getBoundingClientRect();
+      const targetRect = targetDom.getBoundingClientRect();
+      const zoom = state.viewport.zoom || 1;
+
+      const left = (targetRect.left - canvasRect.left) / zoom;
+      const top = (targetRect.top - canvasRect.top) / zoom;
+      const width = targetRect.width / zoom;
+      const height = targetRect.height / zoom;
+
+      box.style.left = left + 'px';
+      box.style.top = top + 'px';
+      box.style.width = width + 'px';
+      box.style.height = height + 'px';
+
+      const parent = el.parentId ? state.elements.find(p => p.id === el.parentId) : null;
+      const isLayoutManaged = parent && parent.modifiers && (parent.modifiers.UIListLayout || parent.modifiers.UIGridLayout);
+
+      badge.innerText = el.name + ' (' + Math.round(width) + ' × ' + Math.round(height) + ')' + (isLayoutManaged ? ' [Layout]' : '');
+      box.classList.remove('hidden');
+    }
+
+    let isDragging = false;
+    let isResizing = false;
+
+    function startDraggingElement(el, e) {
+      isDragging = true;
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const zoom = state.viewport.zoom || 1;
+
+      const parentSize = getParentPixelSize(el);
+      const initialBounds = getElementPixelBounds(el);
+
+      function onMouseMove(moveEvent) {
+        if (!isDragging) return;
+        const dx = (moveEvent.clientX - startX) / zoom;
+        const dy = (moveEvent.clientY - startY) / zoom;
+
+        const newPixelX = initialBounds.x + dx;
+        const newPixelY = initialBounds.y + dy;
+
+        if (el.position.scaleX !== 0 || el.size.scaleX !== 0) {
+          el.position.scaleX = Number((newPixelX / parentSize.w).toFixed(4));
+          el.position.offsetX = 0;
+        } else {
+          el.position.offsetX = Math.round(newPixelX);
+        }
+
+        if (el.position.scaleY !== 0 || el.size.scaleY !== 0) {
+          el.position.scaleY = Number((newPixelY / parentSize.h).toFixed(4));
+          el.position.offsetY = 0;
+        } else {
+          el.position.offsetY = Math.round(newPixelY);
+        }
+
+        renderCanvasElements();
+        updatePropertiesPanelValuesOnly();
+      }
+
+      function onMouseUp() {
+        isDragging = false;
+        window.removeEventListener('mousemove', onMouseMove);
+        window.removeEventListener('mouseup', onMouseUp);
+        renderPropertiesPanel();
+      }
+
+      window.addEventListener('mousemove', onMouseMove);
+      window.addEventListener('mouseup', onMouseUp);
+    }
+
+    function initResizeHandles() {
+      const handles = document.querySelectorAll('.resize-handle');
+      handles.forEach(handle => {
+        handle.addEventListener('mousedown', function(e) {
+          e.stopPropagation();
+          e.preventDefault();
+          if (!state.selectedId) return;
+          const el = state.elements.find(item => item.id === state.selectedId);
+          if (!el) return;
+
+          isResizing = true;
+          const dir = handle.getAttribute('data-direction');
+          const startX = e.clientX;
+          const startY = e.clientY;
+          const zoom = state.viewport.zoom || 1;
+
+          const initialBounds = getElementPixelBounds(el);
+          const parentSize = getParentPixelSize(el);
+
+          const hasAspectLock = el.modifiers && el.modifiers.UIAspectRatioConstraint;
+          const lockedRatio = hasAspectLock ? (el.modifiers.UIAspectRatioConstraint.aspectRatio || (initialBounds.w / initialBounds.h)) : null;
+
+          function onResizeMove(moveEvent) {
+            if (!isResizing) return;
+            const dx = (moveEvent.clientX - startX) / zoom;
+            const dy = (moveEvent.clientY - startY) / zoom;
+
+            let newW = initialBounds.w;
+            let newH = initialBounds.h;
+            let newX = initialBounds.x;
+            let newY = initialBounds.y;
+
+            if (dir.includes('e')) newW = Math.max(16, initialBounds.w + dx);
+            if (dir.includes('s')) newH = Math.max(16, initialBounds.h + dy);
+            if (dir.includes('w')) {
+              const proposedW = initialBounds.w - dx;
+              if (proposedW > 16) {
+                newW = proposedW;
+                newX = initialBounds.x + dx;
+              }
+            }
+            if (dir.includes('n')) {
+              const proposedH = initialBounds.h - dy;
+              if (proposedH > 16) {
+                newH = proposedH;
+                newY = initialBounds.y + dy;
+              }
+            }
+
+            if (hasAspectLock || moveEvent.shiftKey) {
+              const ratio = lockedRatio || (initialBounds.w / initialBounds.h);
+              if (['e', 'w'].includes(dir)) {
+                newH = Math.max(16, newW / ratio);
+              } else if (['n', 's'].includes(dir)) {
+                newW = Math.max(16, newH * ratio);
+              } else {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                  newH = Math.max(16, newW / ratio);
+                } else {
+                  newW = Math.max(16, newH * ratio);
+                }
+              }
+            }
+
+            if (el.size.scaleX !== 0) {
+              el.size.scaleX = Number((newW / parentSize.w).toFixed(4));
+              el.size.offsetX = 0;
+            } else {
+              el.size.offsetX = Math.round(newW);
+            }
+
+            if (el.size.scaleY !== 0) {
+              el.size.scaleY = Number((newH / parentSize.h).toFixed(4));
+              el.size.offsetY = 0;
+            } else {
+              el.size.offsetY = Math.round(newH);
+            }
+
+            if (dir.includes('w')) {
+              if (el.position.scaleX !== 0) {
+                el.position.scaleX = Number((newX / parentSize.w).toFixed(4));
+                el.position.offsetX = 0;
+              } else {
+                el.position.offsetX = Math.round(newX);
+              }
+            }
+            if (dir.includes('n')) {
+              if (el.position.scaleY !== 0) {
+                el.position.scaleY = Number((newY / parentSize.h).toFixed(4));
+                el.position.offsetY = 0;
+              } else {
+                el.position.offsetY = Math.round(newY);
+              }
+            }
+
+            renderCanvasElements();
+            updatePropertiesPanelValuesOnly();
+          }
+
+          function onResizeUp() {
+            isResizing = false;
+            window.removeEventListener('mousemove', onResizeMove);
+            window.removeEventListener('mouseup', onResizeUp);
+            renderPropertiesPanel();
+          }
+
+          window.addEventListener('mousemove', onResizeMove);
+          window.addEventListener('mouseup', onResizeUp);
+        });
+      });
+    }
+
+    function renderExplorerTree() {
+      const tree = document.getElementById('explorerTree');
+      if (!tree) return;
+      tree.innerHTML = '';
+
+      const rootItem = document.createElement('div');
+      rootItem.className = 'flex items-center space-x-1.5 p-1 rounded font-medium ' + (!state.selectedId ? 'bg-studio-accent text-white' : 'hover:bg-studio-hover text-gray-300');
+      rootItem.innerHTML = `
+        <i class="fa-solid fa-layer-group text-studio-robloxBlue text-xs"></i>
+        <span>${state.rootType}</span>
+      `;
+      rootItem.onclick = function() {
+        state.selectedId = null;
+        state.selectedModifierKey = null;
+        renderAll();
+      };
+      tree.appendChild(rootItem);
+
+      function getModifierIcon(modKey) {
+        if (modKey === 'UICorner') return 'fa-regular fa-circle text-orange-400';
+        if (modKey === 'UIStroke') return 'fa-regular fa-square-full text-indigo-400';
+        if (modKey === 'UIGradient') return 'fa-solid fa-sliders text-cyan-400';
+        if (modKey === 'UIPadding') return 'fa-solid fa-arrows-split-up-and-left text-green-400';
+        if (modKey === 'UIAspectRatioConstraint') return 'fa-solid fa-link text-blue-400';
+        if (modKey === 'UIListLayout') return 'fa-solid fa-list-ul text-red-400';
+        if (modKey === 'UIGridLayout') return 'fa-solid fa-table-cells text-yellow-400';
+        return 'fa-solid fa-puzzle-piece text-gray-400';
+      }
+
+      function renderTreeLevel(parentId, depth) {
+        const items = state.elements.filter(e => e.parentId === parentId);
+        items.forEach(el => {
+          const item = document.createElement('div');
+          const isSelected = (state.selectedId === el.id && !state.selectedModifierKey);
+          item.className = `group flex items-center justify-between p-1 rounded cursor-pointer ${isSelected ? 'bg-studio-accent text-white' : 'hover:bg-studio-hover text-gray-300'}`;
+          item.style.paddingLeft = (depth * 14 + 10) + 'px';
+
+          let icon = 'fa-square';
+          if (el.type === 'TextLabel') icon = 'fa-font text-amber-400';
+          else if (el.type === 'TextButton') icon = 'fa-hand-pointer text-yellow-400';
+          else if (el.type === 'TextBox') icon = 'fa-i-cursor text-teal-400';
+          else if (el.type === 'ImageLabel' || el.type === 'ImageButton') icon = 'fa-image text-pink-400';
+          else if (el.type === 'ScrollingFrame') icon = 'fa-arrows-up-down text-purple-400';
+          else if (el.type === 'ViewportFrame') icon = 'fa-cube text-emerald-400';
+          else icon = 'fa-square text-blue-400';
+
+          item.innerHTML = `
+            <div class="flex items-center space-x-1.5 truncate">
+              <i class="fa-solid ${icon} text-[11px]"></i>
+              <span class="truncate">${el.name}</span>
+            </div>
+            <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100">
+              <button onclick="event.stopPropagation(); deleteElement('${el.id}')" title="Delete" class="text-gray-400 hover:text-red-400 px-1">
+                <i class="fa-solid fa-xmark text-[10px]"></i>
+              </button>
+            </div>
+          `;
+
+          item.onclick = function(e) {
+            e.stopPropagation();
+            selectElement(el.id, null);
+          };
+
+          tree.appendChild(item);
+
+          // Render attached modifiers as sub-items
+          if (el.modifiers) {
+            Object.keys(el.modifiers).forEach(modKey => {
+              const modItem = document.createElement('div');
+              const isModSelected = (state.selectedId === el.id && state.selectedModifierKey === modKey);
+              modItem.className = `group flex items-center justify-between p-1 rounded cursor-pointer ${isModSelected ? 'bg-blue-600/80 text-white font-medium' : 'hover:bg-studio-hover/70 text-gray-400'}`;
+              modItem.style.paddingLeft = ((depth + 1) * 14 + 10) + 'px';
+
+              modItem.innerHTML = `
+                <div class="flex items-center space-x-1.5 truncate text-[11px]">
+                  <i class="${getModifierIcon(modKey)} text-[10px]"></i>
+                  <span class="truncate">${modKey}</span>
+                </div>
+                <div class="flex items-center space-x-1 opacity-0 group-hover:opacity-100">
+                  <button onclick="event.stopPropagation(); removeModifier('${el.id}', '${modKey}')" title="Remove ${modKey}" class="text-gray-400 hover:text-red-400 px-1">
+                    <i class="fa-solid fa-trash text-[9px]"></i>
+                  </button>
+                </div>
+              `;
+
+              modItem.onclick = function(e) {
+                e.stopPropagation();
+                selectElement(el.id, modKey);
+              };
+
+              tree.appendChild(modItem);
+            });
+          }
+
+          renderTreeLevel(el.id, depth + 1);
+        });
+      }
+
+      renderTreeLevel(null, 0);
+    }
+
+    function deleteElement(id) {
+      const idsToDelete = [id];
+      function collectChildren(parent) {
+        state.elements.filter(e => e.parentId === parent).forEach(child => {
+          idsToDelete.push(child.id);
+          collectChildren(child.id);
+        });
+      }
+      collectChildren(id);
+
+      state.elements = state.elements.filter(e => !idsToDelete.includes(e.id));
+      if (idsToDelete.includes(state.selectedId)) {
+        state.selectedId = null;
+        state.selectedModifierKey = null;
+      }
+      renderAll();
+      showToast('Deleted element');
+    }
+
+    function renderPropertiesPanel() {
+      const panel = document.getElementById('propertiesPanel');
+      const typeLabel = document.getElementById('selectedTypeName');
+      if (!panel || !typeLabel) return;
+
+      if (!state.selectedId) {
+        typeLabel.innerText = state.rootType;
+        renderRootProperties(panel);
+        return;
+      }
+
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (!el) return;
+
+      if (state.selectedModifierKey && el.modifiers && el.modifiers[state.selectedModifierKey]) {
+        typeLabel.innerText = state.selectedModifierKey + ' (' + el.name + ')';
+        renderModifierOnlyProperties(panel, el, state.selectedModifierKey);
+        return;
+      }
+
+      typeLabel.innerText = el.type;
+
+      let html = '';
+
+      // Identity
+      html += `
+        <div class="space-y-1.5 border-b border-studio-border/60 pb-3">
+          <div class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Identity</div>
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <span class="text-gray-400">Name</span>
+            <input type="text" value="${el.name}" oninput="updatePropValue('name', this.value)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono focus:border-studio-accent focus:outline-none">
+          </div>
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <span class="text-gray-400">Class</span>
+            <span class="col-span-2 text-gray-400 font-mono">${el.type}</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <span class="text-gray-400">ZIndex</span>
+            <input type="number" value="${el.zIndex || 1}" oninput="updatePropValue('zIndex', parseInt(this.value) || 1)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono focus:border-studio-accent focus:outline-none">
+          </div>
+        </div>
+      `;
+
+      // Units & Scaling
+      const hasRatio = el.modifiers && el.modifiers.UIAspectRatioConstraint;
+      const ratioVal = hasRatio ? el.modifiers.UIAspectRatioConstraint.aspectRatio : 1;
+
+      html += `
+        <div class="space-y-2 border-b border-studio-border/60 pb-3 bg-studio-input/20 p-2 rounded border border-studio-border/40">
+          <div class="flex items-center justify-between">
+            <div class="text-[10px] uppercase font-bold text-studio-robloxBlue tracking-wider">Units & Scaling</div>
+            <span class="text-[10px] font-mono ${hasRatio ? 'text-amber-400' : 'text-gray-500'}">${hasRatio ? 'RATIO LOCKED' : 'FREE RESIZE'}</span>
+          </div>
+          <div class="grid grid-cols-2 gap-1 text-[11px]">
+            <button onclick="convertCurrentToScale()" class="py-1 bg-studio-panel hover:bg-studio-hover rounded text-white border border-studio-border font-medium flex items-center justify-center space-x-1">
+              <i class="fa-solid fa-percent text-[10px] text-blue-400"></i>
+              <span>To Scale (Responsive)</span>
+            </button>
+            <button onclick="convertCurrentToOffset()" class="py-1 bg-studio-panel hover:bg-studio-hover rounded text-white border border-studio-border font-medium flex items-center justify-center space-x-1">
+              <i class="fa-solid fa-ruler-combined text-[10px] text-green-400"></i>
+              <span>To Offset (Pixels)</span>
+            </button>
+          </div>
+          <div class="pt-1 flex items-center justify-between text-[11px]">
+            ${hasRatio ? `
+              <button onclick="toggleAspectRatioConstraint()" class="w-full py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 rounded flex items-center justify-center space-x-1 font-medium">
+                <i class="fa-solid fa-unlock text-[10px]"></i>
+                <span>Unlock Aspect Ratio (${ratioVal}:1)</span>
+              </button>
+            ` : `
+              <button onclick="toggleAspectRatioConstraint()" class="w-full py-1 bg-studio-panel hover:bg-studio-hover text-gray-300 border border-studio-border rounded flex items-center justify-center space-x-1">
+                <i class="fa-solid fa-lock text-[10px] text-amber-400"></i>
+                <span>Calculate & Lock Aspect Ratio</span>
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+
+      // Transform (UDim2)
+      html += `
+        <div class="space-y-2 border-b border-studio-border/60 pb-3">
+          <div class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Transform (UDim2)</div>
+          <div>
+            <div class="text-gray-400 mb-1 flex items-center justify-between">
+              <span>Size:</span>
+              <span class="font-mono text-[10px] text-gray-500">{ScaleX, OffsetX, ScaleY, OffsetY}</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1 text-[11px] font-mono">
+              <div>
+                <label class="text-[9px] text-gray-500">X Scale</label>
+                <input id="prop_size_scaleX" type="number" step="0.05" value="${el.size.scaleX}" oninput="updateUDim2('size', 'scaleX', parseFloat(this.value))" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white focus:outline-none">
+              </div>
+              <div>
+                <label class="text-[9px] text-gray-500">X Offset</label>
+                <input id="prop_size_offsetX" type="number" value="${el.size.offsetX}" oninput="updateUDim2('size', 'offsetX', parseInt(this.value))" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white focus:outline-none">
+              </div>
+              <div>
+                <label class="text-[9px] text-gray-500">Y Scale</label>
+                <input id="prop_size_scaleY" type="number" step="0.05" value="${el.size.scaleY}" oninput="updateUDim2('size', 'scaleY', parseFloat(this.value))" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white focus:outline-none">
+              </div>
+              <div>
+                <label class="text-[9px] text-gray-500">Y Offset</label>
+                <input id="prop_size_offsetY" type="number" value="${el.size.offsetY}" oninput="updateUDim2('size', 'offsetY', parseInt(this.value))" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-1">
+            <div class="text-gray-400 mb-1 flex items-center justify-between">
+              <span>Position:</span>
+              <span class="font-mono text-[10px] text-gray-500">{ScaleX, OffsetX, ScaleY, OffsetY}</span>
+            </div>
+            <div class="grid grid-cols-4 gap-1 text-[11px] font-mono">
+              <div>
+                <label class="text-[9px] text-gray-500">X Scale</label>
+                <input id="prop_pos_scaleX" type="number" step="0.05" value="${el.position.scaleX}" oninput="updateUDim2('position', 'scaleX', parseFloat(this.value))" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white focus:outline-none">
+              </div>
+              <div>
+                <label class="text-[9px] text-gray-500">X Offset</label>
+                <input id="prop_pos_offsetX" type="number" value="${el.position.offsetX}" oninput="updateUDim2('position', 'offsetX', parseInt(this.value))" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white focus:outline-none">
+              </div>
+              <div>
+                <label class="text-[9px] text-gray-500">Y Scale</label>
+                <input id="prop_pos_scaleY" type="number" step="0.05" value="${el.position.scaleY}" oninput="updateUDim2('position', 'scaleY', parseFloat(this.value))" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white focus:outline-none">
+              </div>
+              <div>
+                <label class="text-[9px] text-gray-500">Y Offset</label>
+                <input id="prop_pos_offsetY" type="number" value="${el.position.offsetY}" oninput="updateUDim2('position', 'offsetY', parseInt(this.value))" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white focus:outline-none">
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-1 grid grid-cols-3 gap-2 items-center">
+            <span class="text-gray-400">AnchorPoint</span>
+            <div class="col-span-2 grid grid-cols-2 gap-1 font-mono">
+              <input type="number" step="0.1" min="0" max="1" value="${el.anchorPoint ? el.anchorPoint.x : 0}" oninput="updateAnchorPoint('x', parseFloat(this.value))" class="bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white">
+              <input type="number" step="0.1" min="0" max="1" value="${el.anchorPoint ? el.anchorPoint.y : 0}" oninput="updateAnchorPoint('y', parseFloat(this.value))" class="bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white">
+            </div>
+          </div>
+        </div>
+      `;
+
+      html += `
+        <div class="space-y-2 border-b border-studio-border/60 pb-3">
+          <div class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Appearance</div>
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <span class="text-gray-400">BackgroundColor3</span>
+            <div class="col-span-2 flex items-center space-x-2">
+              <input type="color" value="${el.backgroundColor || '#393939'}" oninput="updatePropValue('backgroundColor', this.value)" class="w-7 h-6 rounded bg-transparent border border-studio-border cursor-pointer">
+              <input type="text" value="${el.backgroundColor || '#393939'}" oninput="updatePropValue('backgroundColor', this.value)" class="flex-1 bg-studio-input border border-studio-border rounded px-2 py-0.5 text-white font-mono uppercase text-xs">
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <span class="text-gray-400" title="Affects only the background frame box, not the image or text">BackgroundTransparency</span>
+            <div class="col-span-2 flex items-center space-x-2 font-mono">
+              <input type="range" min="0" max="1" step="0.05" value="${el.backgroundTransparency !== undefined ? el.backgroundTransparency : 0}" oninput="updatePropValue('backgroundTransparency', parseFloat(this.value))" class="flex-1">
+              <span class="text-[11px] w-8">${el.backgroundTransparency !== undefined ? el.backgroundTransparency : 0}</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <span class="text-gray-400">BorderSizePixel</span>
+            <input type="number" min="0" value="${el.borderSizePixel || 0}" oninput="updatePropValue('borderSizePixel', parseInt(this.value) || 0)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-0.5 text-white font-mono">
+          </div>
+        </div>
+      `;
+
+      if (['TextLabel', 'TextButton', 'TextBox'].includes(el.type)) {
+        html += `
+          <div class="space-y-2 border-b border-studio-border/60 pb-3">
+            <div class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Text Properties</div>
+            <div class="grid grid-cols-3 gap-2 items-center">
+              <span class="text-gray-400">Text</span>
+              <input type="text" value="${el.text || ''}" oninput="updatePropValue('text', this.value)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white">
+            </div>
+            <div class="grid grid-cols-3 gap-2 items-center">
+              <span class="text-gray-400">TextColor3</span>
+              <div class="col-span-2 flex items-center space-x-2">
+                <input type="color" value="${el.textColor || '#ffffff'}" oninput="updatePropValue('textColor', this.value)" class="w-7 h-6 rounded bg-transparent border border-studio-border cursor-pointer">
+                <input type="text" value="${el.textColor || '#ffffff'}" oninput="updatePropValue('textColor', this.value)" class="flex-1 bg-studio-input border border-studio-border rounded px-2 py-0.5 text-white font-mono uppercase text-xs">
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2 items-center">
+              <span class="text-gray-400">TextSize</span>
+              <input type="number" min="6" max="100" value="${el.textSize || 14}" oninput="updatePropValue('textSize', parseInt(this.value) || 14)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-0.5 text-white font-mono">
+            </div>
+          </div>
+        `;
+      }
+
+      if (['ImageLabel', 'ImageButton'].includes(el.type)) {
+        html += `
+          <div class="space-y-2 border-b border-studio-border/60 pb-3">
+            <div class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Image Properties</div>
+            <div class="space-y-1">
+              <label class="text-gray-400 text-xs">Image URL / Asset</label>
+              <input type="text" value="${el.image || ''}" oninput="updatePropValue('image', this.value)" class="w-full bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono text-xs">
+              <button onclick="document.getElementById('localImageInput').click()" class="mt-1 w-full py-1 bg-studio-hover hover:bg-studio-accent rounded text-gray-200 text-xs flex items-center justify-center space-x-1">
+                <i class="fa-solid fa-cloud-arrow-up"></i>
+                <span>Upload Local Preview Image</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 items-center">
+              <span class="text-gray-400">ScaleType</span>
+              <select onchange="updatePropValue('scaleType', this.value); renderPropertiesPanel();" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono">
+                <option value="Stretch" ${(el.scaleType || 'Stretch') === 'Stretch' ? 'selected' : ''}>Stretch (Default)</option>
+                <option value="Fit" ${el.scaleType === 'Fit' ? 'selected' : ''}>Fit (Letterbox)</option>
+                <option value="Crop" ${el.scaleType === 'Crop' ? 'selected' : ''}>Crop (Cover/Fill)</option>
+                <option value="Slice" ${el.scaleType === 'Slice' ? 'selected' : ''}>Slice (9-Slice)</option>
+                <option value="Tile" ${el.scaleType === 'Tile' ? 'selected' : ''}>Tile (Repeat)</option>
+              </select>
+            </div>
+
+            ${el.scaleType === 'Slice' ? `
+              <div class="p-2 bg-studio-input/40 border border-studio-border rounded space-y-1.5">
+                <div class="text-[10px] font-semibold text-studio-robloxBlue uppercase">SliceCenter (Rect)</div>
+                <div class="grid grid-cols-4 gap-1 text-[11px] font-mono">
+                  <div>
+                    <label class="text-[9px] text-gray-500">MinX</label>
+                    <input type="number" min="0" value="${(el.sliceCenter && el.sliceCenter.minX) || 12}" oninput="updateSliceCenter('minX', parseInt(this.value) || 0)" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white">
+                  </div>
+                  <div>
+                    <label class="text-[9px] text-gray-500">MinY</label>
+                    <input type="number" min="0" value="${(el.sliceCenter && el.sliceCenter.minY) || 12}" oninput="updateSliceCenter('minY', parseInt(this.value) || 0)" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white">
+                  </div>
+                  <div>
+                    <label class="text-[9px] text-gray-500">MaxX</label>
+                    <input type="number" min="0" value="${(el.sliceCenter && el.sliceCenter.maxX) || 40}" oninput="updateSliceCenter('maxX', parseInt(this.value) || 0)" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white">
+                  </div>
+                  <div>
+                    <label class="text-[9px] text-gray-500">MaxY</label>
+                    <input type="number" min="0" value="${(el.sliceCenter && el.sliceCenter.maxY) || 40}" oninput="updateSliceCenter('maxY', parseInt(this.value) || 0)" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white">
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+
+            ${el.scaleType === 'Tile' ? `
+              <div class="p-2 bg-studio-input/40 border border-studio-border rounded space-y-1.5">
+                <div class="text-[10px] font-semibold text-studio-robloxBlue uppercase">TileSize (Pixels)</div>
+                <div class="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                  <div>
+                    <label class="text-[9px] text-gray-500">Width</label>
+                    <input type="number" min="4" value="${(el.tileSize && el.tileSize.x) || 64}" oninput="updateTileSize('x', parseInt(this.value) || 64)" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white">
+                  </div>
+                  <div>
+                    <label class="text-[9px] text-gray-500">Height</label>
+                    <input type="number" min="4" value="${(el.tileSize && el.tileSize.y) || 64}" oninput="updateTileSize('y', parseInt(this.value) || 64)" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white">
+                  </div>
+                </div>
+              </div>
+            ` : ''}
+
+            <div class="grid grid-cols-3 gap-2 items-center">
+              <span class="text-gray-400">ResampleMode</span>
+              <select onchange="updatePropValue('resampleMode', this.value)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono">
+                <option value="Default" ${(el.resampleMode || 'Default') === 'Default' ? 'selected' : ''}>Default (Bilinear)</option>
+                <option value="Pixelated" ${el.resampleMode === 'Pixelated' ? 'selected' : ''}>Pixelated (Nearest)</option>
+              </select>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 items-center">
+              <span class="text-gray-400">ImageTransparency</span>
+              <div class="col-span-2 flex items-center space-x-2 font-mono">
+                <input type="range" min="0" max="1" step="0.05" value="${el.imageTransparency !== undefined ? el.imageTransparency : 0}" oninput="updatePropValue('imageTransparency', parseFloat(this.value))" class="flex-1">
+                <span class="text-[11px] w-8">${el.imageTransparency !== undefined ? el.imageTransparency : 0}</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 items-center">
+              <span class="text-gray-400">ImageColor3</span>
+              <div class="col-span-2 flex items-center space-x-2">
+                <input type="color" value="${el.imageColor || '#ffffff'}" oninput="updatePropValue('imageColor', this.value)" class="w-7 h-6 rounded bg-transparent border border-studio-border cursor-pointer">
+                <input type="text" value="${el.imageColor || '#ffffff'}" oninput="updatePropValue('imageColor', this.value)" class="flex-1 bg-studio-input border border-studio-border rounded px-2 py-0.5 text-white font-mono uppercase text-xs">
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Modifiers list
+      html += `
+        <div class="space-y-2">
+          <div class="text-[10px] uppercase font-bold text-gray-500 tracking-wider flex items-center justify-between">
+            <span>Attached Modifiers & Layouts</span>
+          </div>
+      `;
+
+      if (el.modifiers && Object.keys(el.modifiers).length > 0) {
+        Object.keys(el.modifiers).forEach(modKey => {
+          const mod = el.modifiers[modKey];
+          html += `
+            <div class="p-2 bg-studio-input/40 border border-studio-border rounded space-y-2">
+              <div class="flex items-center justify-between font-semibold text-studio-robloxBlue text-[11px]">
+                <span class="flex items-center space-x-1.5">
+                  <i class="fa-solid fa-cube text-[10px]"></i>
+                  <span>${modKey}</span>
+                </span>
+                <button onclick="removeModifier('${el.id}', '${modKey}')" title="Delete modifier" class="text-gray-400 hover:text-red-400">
+                  <i class="fa-solid fa-trash-can text-[10px]"></i>
+                </button>
+              </div>
+          `;
+
+          if (modKey === 'UIListLayout') {
+            html += `
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Direction</span>
+                <select onchange="updateModifierProp('${el.id}', 'UIListLayout', 'fillDirection', this.value)" class="col-span-2 bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white">
+                  <option ${mod.fillDirection === 'Vertical' ? 'selected' : ''}>Vertical</option>
+                  <option ${mod.fillDirection === 'Horizontal' ? 'selected' : ''}>Horizontal</option>
+                </select>
+              </div>
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Padding (px)</span>
+                <input type="number" min="0" value="${mod.padding || 0}" oninput="updateModifierProp('${el.id}', 'UIListLayout', 'padding', parseInt(this.value) || 0)" class="col-span-2 bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+              </div>
+            `;
+          } else if (modKey === 'UIGridLayout') {
+            html += `
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Cell Width</span>
+                <input type="number" min="10" value="${mod.cellSizeX || 80}" oninput="updateModifierProp('${el.id}', 'UIGridLayout', 'cellSizeX', parseInt(this.value) || 80)" class="col-span-2 bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+              </div>
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Cell Height</span>
+                <input type="number" min="10" value="${mod.cellSizeY || 80}" oninput="updateModifierProp('${el.id}', 'UIGridLayout', 'cellSizeY', parseInt(this.value) || 80)" class="col-span-2 bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+              </div>
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Pad X / Y</span>
+                <div class="col-span-2 grid grid-cols-2 gap-1">
+                  <input type="number" min="0" value="${mod.cellPaddingX || 8}" oninput="updateModifierProp('${el.id}', 'UIGridLayout', 'cellPaddingX', parseInt(this.value) || 0)" class="bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+                  <input type="number" min="0" value="${mod.cellPaddingY || 8}" oninput="updateModifierProp('${el.id}', 'UIGridLayout', 'cellPaddingY', parseInt(this.value) || 0)" class="bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+                </div>
+              </div>
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Max Cols</span>
+                <input type="number" min="0" value="${mod.maxCells || 0}" placeholder="0 = auto" oninput="updateModifierProp('${el.id}', 'UIGridLayout', 'maxCells', parseInt(this.value) || 0)" class="col-span-2 bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+              </div>
+            `;
+          } else if (modKey === 'UICorner') {
+            html += `
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Radius (px)</span>
+                <input type="number" min="0" value="${mod.cornerRadiusOffset || 8}" oninput="updateModifierProp('${el.id}', 'UICorner', 'cornerRadiusOffset', parseInt(this.value) || 0)" class="col-span-2 bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+              </div>
+            `;
+          } else if (modKey === 'UIStroke') {
+            html += `
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Color</span>
+                <input type="color" value="${mod.color || '#00a2ff'}" oninput="updateModifierProp('${el.id}', 'UIStroke', 'color', this.value)" class="col-span-2 h-6 w-full rounded bg-transparent border border-studio-border cursor-pointer">
+              </div>
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Thickness</span>
+                <input type="number" min="1" max="20" value="${mod.thickness || 2}" oninput="updateModifierProp('${el.id}', 'UIStroke', 'thickness', parseInt(this.value) || 1)" class="col-span-2 bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+              </div>
+            `;
+          } else if (modKey === 'UIGradient') {
+            html += `
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Color 1</span>
+                <input type="color" value="${mod.color1 || '#ff007f'}" oninput="updateModifierProp('${el.id}', 'UIGradient', 'color1', this.value)" class="col-span-2 h-6 w-full rounded bg-transparent border border-studio-border cursor-pointer">
+              </div>
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Color 2</span>
+                <input type="color" value="${mod.color2 || '#7928ca'}" oninput="updateModifierProp('${el.id}', 'UIGradient', 'color2', this.value)" class="col-span-2 h-6 w-full rounded bg-transparent border border-studio-border cursor-pointer">
+              </div>
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">Rotation</span>
+                <input type="number" value="${mod.rotation || 0}" oninput="updateModifierProp('${el.id}', 'UIGradient', 'rotation', parseInt(this.value) || 0)" class="col-span-2 bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+              </div>
+            `;
+          } else if (modKey === 'UIPadding') {
+            html += `
+              <div class="grid grid-cols-2 gap-1 text-[11px]">
+                <div>
+                  <label class="text-[9px] text-gray-500">Top</label>
+                  <input type="number" min="0" value="${mod.top || 0}" oninput="updateModifierProp('${el.id}', 'UIPadding', 'top', parseInt(this.value) || 0)" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+                </div>
+                <div>
+                  <label class="text-[9px] text-gray-500">Bottom</label>
+                  <input type="number" min="0" value="${mod.bottom || 0}" oninput="updateModifierProp('${el.id}', 'UIPadding', 'bottom', parseInt(this.value) || 0)" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+                </div>
+                <div>
+                  <label class="text-[9px] text-gray-500">Left</label>
+                  <input type="number" min="0" value="${mod.left || 0}" oninput="updateModifierProp('${el.id}', 'UIPadding', 'left', parseInt(this.value) || 0)" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+                </div>
+                <div>
+                  <label class="text-[9px] text-gray-500">Right</label>
+                  <input type="number" min="0" value="${mod.right || 0}" oninput="updateModifierProp('${el.id}', 'UIPadding', 'right', parseInt(this.value) || 0)" class="w-full bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+                </div>
+              </div>
+            `;
+          } else if (modKey === 'UIAspectRatioConstraint') {
+            html += `
+              <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+                <span class="text-gray-400">AspectRatio</span>
+                <input type="number" step="0.01" value="${mod.aspectRatio || 1}" oninput="updateModifierProp('${el.id}', 'UIAspectRatioConstraint', 'aspectRatio', parseFloat(this.value) || 1)" class="col-span-2 bg-studio-input border border-studio-border rounded px-1.5 py-0.5 text-white font-mono">
+              </div>
+            `;
+          }
+
+          html += `</div>`;
+        });
+      } else {
+        html += `<div class="text-[11px] text-gray-500 italic p-2 bg-studio-input/20 border border-studio-border/30 rounded">No modifiers attached yet. Click a modifier like UIListLayout or UIGridLayout on the left sidebar to add one.</div>`;
+      }
+
+      html += `</div>`;
+      panel.innerHTML = html;
+    }
+
+    function renderModifierOnlyProperties(panel, el, modKey) {
+      const mod = el.modifiers[modKey];
+      let html = `
+        <div class="space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-studio-border">
+            <button onclick="selectElement('${el.id}', null)" class="text-studio-robloxBlue hover:underline text-xs flex items-center space-x-1">
+              <i class="fa-solid fa-arrow-left text-[10px]"></i>
+              <span>Back to ${el.name}</span>
+            </button>
+            <button onclick="removeModifier('${el.id}', '${modKey}')" class="px-2 py-0.5 bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white rounded text-[11px]">
+              Remove ${modKey}
+            </button>
+          </div>
+          <div class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">${modKey} Settings</div>
+      `;
+
+      if (modKey === 'UIGridLayout') {
+        html += `
+          <div class="p-2 bg-studio-input/40 border border-studio-border rounded space-y-2">
+            <div class="text-[11px] text-yellow-300 font-semibold mb-1">Grid Cell Dimensions</div>
+            <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+              <span class="text-gray-400">Cell Width</span>
+              <input type="number" min="10" value="${mod.cellSizeX || 80}" oninput="updateModifierProp('${el.id}', 'UIGridLayout', 'cellSizeX', parseInt(this.value) || 80)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono">
+            </div>
+            <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+              <span class="text-gray-400">Cell Height</span>
+              <input type="number" min="10" value="${mod.cellSizeY || 80}" oninput="updateModifierProp('${el.id}', 'UIGridLayout', 'cellSizeY', parseInt(this.value) || 80)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono">
+            </div>
+            <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+              <span class="text-gray-400">Cell Padding X</span>
+              <input type="number" min="0" value="${mod.cellPaddingX || 8}" oninput="updateModifierProp('${el.id}', 'UIGridLayout', 'cellPaddingX', parseInt(this.value) || 0)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono">
+            </div>
+            <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+              <span class="text-gray-400">Cell Padding Y</span>
+              <input type="number" min="0" value="${mod.cellPaddingY || 8}" oninput="updateModifierProp('${el.id}', 'UIGridLayout', 'cellPaddingY', parseInt(this.value) || 0)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono">
+            </div>
+            <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+              <span class="text-gray-400">Max Columns</span>
+              <input type="number" min="0" value="${mod.maxCells || 0}" placeholder="0 = Auto Wrap" oninput="updateModifierProp('${el.id}', 'UIGridLayout', 'maxCells', parseInt(this.value) || 0)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono">
+            </div>
+          </div>
+        `;
+      } else if (modKey === 'UIListLayout') {
+        html += `
+          <div class="p-2 bg-studio-input/40 border border-studio-border rounded space-y-2">
+            <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+              <span class="text-gray-400">Direction</span>
+              <select onchange="updateModifierProp('${el.id}', 'UIListLayout', 'fillDirection', this.value)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white">
+                <option ${mod.fillDirection === 'Vertical' ? 'selected' : ''}>Vertical</option>
+                <option ${mod.fillDirection === 'Horizontal' ? 'selected' : ''}>Horizontal</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-3 gap-2 items-center text-[11px]">
+              <span class="text-gray-400">Padding (px)</span>
+              <input type="number" min="0" value="${mod.padding || 0}" oninput="updateModifierProp('${el.id}', 'UIListLayout', 'padding', parseInt(this.value) || 0)" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono">
+            </div>
+          </div>
+        `;
+      } else {
+        html += `<div class="text-xs text-gray-400">Select properties in the main list below.</div>`;
+      }
+
+      html += `</div>`;
+      panel.innerHTML = html;
+    }
+
+    function renderRootProperties(panel) {
+      const type = state.rootType;
+      const rootProps = state.rootProperties[type];
+
+      let html = `
+        <div class="space-y-3">
+          <div class="text-[10px] uppercase font-bold text-gray-500 tracking-wider">Root Container</div>
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <span class="text-gray-400">Type</span>
+            <span class="col-span-2 text-studio-robloxBlue font-mono font-bold">${type}</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <span class="text-gray-400">Name</span>
+            <input type="text" value="${rootProps.Name}" oninput="state.rootProperties['${type}'].Name = this.value" class="col-span-2 bg-studio-input border border-studio-border rounded px-2 py-1 text-white font-mono">
+          </div>
+      `;
+
+      if (type === 'ScreenGui') {
+        html += `
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <span class="text-gray-400">ResetOnSpawn</span>
+            <input type="checkbox" ${rootProps.ResetOnSpawn ? 'checked' : ''} onchange="state.rootProperties.ScreenGui.ResetOnSpawn = this.checked" class="rounded bg-studio-input border-studio-border text-studio-accent">
+          </div>
+          <div class="grid grid-cols-3 gap-2 items-center">
+            <span class="text-gray-400">IgnoreGuiInset</span>
+            <input type="checkbox" ${rootProps.IgnoreGuiInset ? 'checked' : ''} onchange="state.rootProperties.ScreenGui.IgnoreGuiInset = this.checked" class="rounded bg-studio-input border-studio-border text-studio-accent">
+          </div>
+        `;
+      }
+
+      html += `</div>`;
+      panel.innerHTML = html;
+    }
+
+    function updatePropValue(prop, value) {
+      if (!state.selectedId) return;
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (!el) return;
+      el[prop] = value;
+      renderCanvasElements();
+      renderExplorerTree();
+    }
+
+    function updateUDim2(propGroup, subProp, value) {
+      if (!state.selectedId) return;
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (!el) return;
+
+      if (!isNaN(value)) {
+        el[propGroup][subProp] = value;
+      }
+
+      if (el.modifiers && el.modifiers.UIAspectRatioConstraint && propGroup === 'size') {
+        const ratio = el.modifiers.UIAspectRatioConstraint.aspectRatio || 1;
+        const parentSize = getParentPixelSize(el);
+
+        if (subProp === 'scaleX') {
+          const pixelW = (el.size.scaleX * parentSize.w) + el.size.offsetX;
+          const pixelH = pixelW / ratio;
+          el.size.scaleY = Number((pixelH / parentSize.h).toFixed(4));
+        } else if (subProp === 'offsetX') {
+          const pixelW = (el.size.scaleX * parentSize.w) + el.size.offsetX;
+          const pixelH = pixelW / ratio;
+          el.size.offsetY = Math.round(pixelH - (el.size.scaleY * parentSize.h));
+        } else if (subProp === 'scaleY') {
+          const pixelH = (el.size.scaleY * parentSize.h) + el.size.offsetY;
+          const pixelW = pixelH * ratio;
+          el.size.scaleX = Number((pixelW / parentSize.w).toFixed(4));
+        } else if (subProp === 'offsetY') {
+          const pixelH = (el.size.scaleY * parentSize.h) + el.size.offsetY;
+          const pixelW = pixelH * ratio;
+          el.size.offsetX = Math.round(pixelW - (el.size.scaleX * parentSize.w));
+        }
+      }
+
+      renderCanvasElements();
+      updatePropertiesPanelValuesOnly();
+    }
+
+    function updatePropertiesPanelValuesOnly() {
+      if (!state.selectedId) return;
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (!el) return;
+
+      const sx = document.getElementById('prop_size_scaleX');
+      const sox = document.getElementById('prop_size_offsetX');
+      const sy = document.getElementById('prop_size_scaleY');
+      const soy = document.getElementById('prop_size_offsetY');
+
+      if (sx && document.activeElement !== sx) sx.value = el.size.scaleX;
+      if (sox && document.activeElement !== sox) sox.value = el.size.offsetX;
+      if (sy && document.activeElement !== sy) sy.value = el.size.scaleY;
+      if (soy && document.activeElement !== soy) soy.value = el.size.offsetY;
+
+      const px = document.getElementById('prop_pos_scaleX');
+      const pox = document.getElementById('prop_pos_offsetX');
+      const py = document.getElementById('prop_pos_scaleY');
+      const poy = document.getElementById('prop_pos_offsetY');
+
+      if (px && document.activeElement !== px) px.value = el.position.scaleX;
+      if (pox && document.activeElement !== pox) pox.value = el.position.offsetX;
+      if (py && document.activeElement !== py) py.value = el.position.scaleY;
+      if (poy && document.activeElement !== poy) poy.value = el.position.offsetY;
+    }
+
+    function updateAnchorPoint(axis, val) {
+      if (!state.selectedId) return;
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (!el) return;
+      if (!el.anchorPoint) el.anchorPoint = { x: 0, y: 0 };
+      el.anchorPoint[axis] = isNaN(val) ? 0 : val;
+      renderCanvasElements();
+    }
+
+    function updateSliceCenter(axis, val) {
+      if (!state.selectedId) return;
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (!el) return;
+      if (!el.sliceCenter) el.sliceCenter = { minX: 12, minY: 12, maxX: 40, maxY: 40 };
+      el.sliceCenter[axis] = isNaN(val) ? 0 : val;
+      renderCanvasElements();
+    }
+
+    function updateTileSize(axis, val) {
+      if (!state.selectedId) return;
+      const el = state.elements.find(e => e.id === state.selectedId);
+      if (!el) return;
+      if (!el.tileSize) el.tileSize = { x: 64, y: 64 };
+      el.tileSize[axis] = isNaN(val) ? 64 : val;
+      renderCanvasElements();
+    }
+
+    function updateModifierProp(elId, modKey, prop, val) {
+      const el = state.elements.find(e => e.id === elId);
+      if (el && el.modifiers && el.modifiers[modKey]) {
+        el.modifiers[modKey][prop] = val;
+        renderCanvasElements();
+      }
+    }
+
+    function handleImageFileSelected(e) {
+      const file = e.target.files[0];
+      if (!file || !state.selectedId) return;
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const el = state.elements.find(item => item.id === state.selectedId);
+        if (el) {
+          el.image = evt.target.result;
+          renderAll();
+          showToast('Updated preview image');
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    let threeScene, threeCamera, threeRenderer, threeMesh;
+    let isThreeInitialized = false;
+
+    function initThreePreview() {
+      const mount = document.getElementById('threeCanvasMount');
+      if (!mount || isThreeInitialized || typeof THREE === 'undefined') return;
+
+      threeScene = new THREE.Scene();
+      threeScene.background = new THREE.Color(0x18181c);
+
+      const width = mount.clientWidth || 800;
+      const height = mount.clientHeight || 500;
+
+      threeCamera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+      threeCamera.position.set(0, 3, 10);
+      threeCamera.lookAt(0, 0, 0);
+
+      threeRenderer = new THREE.WebGLRenderer({ antialias: true });
+      threeRenderer.setSize(width, height);
+      mount.appendChild(threeRenderer.domElement);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+      threeScene.add(ambientLight);
+
+      const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      dirLight.position.set(5, 10, 7);
+      threeScene.add(dirLight);
+
+      const grid = new THREE.GridHelper(20, 20, 0x00a2ff, 0x333333);
+      grid.position.y = -2;
+      threeScene.add(grid);
+
+      const partGeo = new THREE.BoxGeometry(4, 4, 4);
+      const partMat = new THREE.MeshStandardMaterial({ color: 0x3a3a42, roughness: 0.4 });
+      threeMesh = new THREE.Mesh(partGeo, partMat);
+      threeScene.add(threeMesh);
+
+      let isRotating = false;
+      let prevMouseX = 0;
+      let orbitAngle = 0;
+
+      mount.addEventListener('mousedown', function(ev) {
+        if (ev.button === 0) {
+          isRotating = true;
+          prevMouseX = ev.clientX;
+        }
+      });
+
+      window.addEventListener('mousemove', function(ev) {
+        if (!isRotating) return;
+        const dx = ev.clientX - prevMouseX;
+        orbitAngle += dx * 0.01;
+        threeCamera.position.x = Math.sin(orbitAngle) * 10;
+        threeCamera.position.z = Math.cos(orbitAngle) * 10;
+        threeCamera.lookAt(0, 0, 0);
+        prevMouseX = ev.clientX;
+      });
+
+      window.addEventListener('mouseup', function() { isRotating = false; });
+
+      function animate() {
+        requestAnimationFrame(animate);
+        threeRenderer.render(threeScene, threeCamera);
+      }
+      animate();
+
+      isThreeInitialized = true;
+    }
+
+    function switchRootGui(type) {
+      state.rootType = type;
+      ['ScreenGui', 'SurfaceGui', 'BillboardGui'].forEach(t => {
+        const btn = document.getElementById('tab' + t);
+        if (btn) {
+          if (t === type) {
+            btn.className = 'px-2.5 py-1 rounded text-white bg-studio-accent font-medium flex items-center space-x-1';
+          } else {
+            btn.className = 'px-2.5 py-1 rounded text-gray-400 hover:text-white hover:bg-studio-hover flex items-center space-x-1';
+          }
+        }
+      });
+
+      const threeContainer = document.getElementById('threePreviewContainer');
+      const title = document.getElementById('threePreviewTitle');
+
+      if (type === 'ScreenGui') {
+        if (threeContainer) threeContainer.classList.add('hidden');
+      } else {
+        if (threeContainer) threeContainer.classList.remove('hidden');
+        if (title) title.innerText = type + ' (3D Simulation Preview)';
+        setTimeout(() => { initThreePreview(); }, 50);
+      }
+
+      state.selectedId = null;
+      renderAll();
+      showToast('Switched to ' + type);
+    }
+
+    function generateLuauScript() {
+      const rootType = state.rootType;
+      const rootProps = state.rootProperties[rootType];
+
+      let script = `--[[
+    Roblox Studio GUI Auto-Generated Script
+    Container: ${rootType}
+    Export Date: ${new Date().toLocaleDateString()}
+--]]
+
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+`;
+
+      if (rootType === 'ScreenGui') {
+        script += `-- Create ScreenGui\n`;
+        script += `local root = Instance.new("ScreenGui")\n`;
+        script += `root.Name = "${rootProps.Name}"\n`;
+        script += `root.ResetOnSpawn = ${rootProps.ResetOnSpawn}\n`;
+        script += `root.IgnoreGuiInset = ${rootProps.IgnoreGuiInset}\n`;
+        script += `root.ZIndexBehavior = Enum.ZIndexBehavior.${rootProps.ZIndexBehavior}\n`;
+        script += `root.Parent = playerGui\n\n`;
+      } else if (rootType === 'SurfaceGui') {
+        script += `-- Create SurfaceGui\n`;
+        script += `local root = Instance.new("SurfaceGui")\n`;
+        script += `root.Name = "${rootProps.Name}"\n`;
+        script += `root.Face = Enum.NormalId.${rootProps.Face}\n`;
+        script += `root.AlwaysOnTop = ${rootProps.AlwaysOnTop}\n`;
+        script += `root.Adornee = ${rootProps.AdorneePart}\n`;
+        script += `root.Parent = root.Adornee\n\n`;
+      } else if (rootType === 'BillboardGui') {
+        script += `-- Create BillboardGui\n`;
+        script += `local root = Instance.new("BillboardGui")\n`;
+        script += `root.Name = "${rootProps.Name}"\n`;
+        script += `root.Size = UDim2.new(${rootProps.Size.scaleX}, ${rootProps.Size.offsetX}, ${rootProps.Size.scaleY}, ${rootProps.Size.offsetY})\n`;
+        script += `root.StudsOffset = Vector3.new(0, ${rootProps.StudsOffset.y}, 0)\n`;
+        script += `root.AlwaysOnTop = ${rootProps.AlwaysOnTop}\n`;
+        script += `root.Parent = playerGui\n\n`;
+      }
+
+      function sanitizeVar(name) {
+        return name.replace(/[^a-zA-Z0-9_]/g, '') || 'elem';
+      }
+
+      function hexToColor3Call(hex) {
+        const rgb = hexToRgb(hex || '#ffffff');
+        return `Color3.fromRGB(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+      }
+
+      state.elements.forEach((el, index) => {
+        const varName = sanitizeVar(el.name) + '_' + index;
+        const parentVar = el.parentId ? (sanitizeVar(state.elements.find(p => p.id === el.parentId)?.name || 'root') + '_' + state.elements.findIndex(p => p.id === el.parentId)) : 'root';
+
+        script += `-- [[ ${el.name} (${el.type}) ]] --\n`;
+        script += `local ${varName} = Instance.new("${el.type}")\n`;
+        script += `${varName}.Name = "${el.name}"\n`;
+        script += `${varName}.Size = UDim2.new(${el.size.scaleX}, ${el.size.offsetX}, ${el.size.scaleY}, ${el.size.offsetY})\n`;
+        script += `${varName}.Position = UDim2.new(${el.position.scaleX}, ${el.position.offsetX}, ${el.position.scaleY}, ${el.position.offsetY})\n`;
+        if (el.anchorPoint) {
+          script += `${varName}.AnchorPoint = Vector2.new(${el.anchorPoint.x}, ${el.anchorPoint.y})\n`;
+        }
+        script += `${varName}.BackgroundColor3 = ${hexToColor3Call(el.backgroundColor)}\n`;
+        script += `${varName}.BackgroundTransparency = ${el.backgroundTransparency !== undefined ? el.backgroundTransparency : 0}\n`;
+        script += `${varName}.BorderSizePixel = ${el.borderSizePixel || 0}\n`;
+        script += `${varName}.ZIndex = ${el.zIndex || 1}\n`;
+
+        if (['TextLabel', 'TextButton', 'TextBox'].includes(el.type)) {
+          script += `${varName}.Text = "${el.text || ''}"\n`;
+          script += `${varName}.TextColor3 = ${hexToColor3Call(el.textColor)}\n`;
+          script += `${varName}.TextSize = ${el.textSize || 14}\n`;
+          script += `${varName}.Font = Enum.Font.${el.font || 'SourceSans'}\n`;
+        }
+
+        if (['ImageLabel', 'ImageButton'].includes(el.type)) {
+          script += `${varName}.Image = "rbxassetid://0" -- Replace with your uploaded Roblox Decal/Image ID\n`;
+          script += `${varName}.ScaleType = Enum.ScaleType.${el.scaleType || 'Stretch'}\n`;
+          script += `${varName}.ImageColor3 = ${hexToColor3Call(el.imageColor || '#ffffff')}\n`;
+          script += `${varName}.ImageTransparency = ${el.imageTransparency !== undefined ? el.imageTransparency : 0}\n`;
+          if (el.resampleMode && el.resampleMode === 'Pixelated') {
+            script += `${varName}.ResampleMode = Enum.ResamplerMode.Pixelated\n`;
+          }
+          if (el.scaleType === 'Slice' && el.sliceCenter) {
+            script += `${varName}.SliceCenter = Rect.new(${el.sliceCenter.minX || 0}, ${el.sliceCenter.minY || 0}, ${el.sliceCenter.maxX || 0}, ${el.sliceCenter.maxY || 0})\n`;
+          }
+          if (el.scaleType === 'Tile' && el.tileSize) {
+            script += `${varName}.TileSize = UDim2.fromOffset(${el.tileSize.x || 64}, ${el.tileSize.y || 64})\n`;
+          }
+        }
+
+        // Modifiers & Layouts
+        if (el.modifiers) {
+          if (el.modifiers.UIListLayout) {
+            const listVar = varName + '_ListLayout';
+            script += `local ${listVar} = Instance.new("UIListLayout")\n`;
+            script += `${listVar}.FillDirection = Enum.FillDirection.${el.modifiers.UIListLayout.fillDirection || 'Vertical'}\n`;
+            script += `${listVar}.Padding = UDim.new(0, ${el.modifiers.UIListLayout.padding || 0})\n`;
+            script += `${listVar}.Parent = ${varName}\n`;
+          }
+
+          if (el.modifiers.UIGridLayout) {
+            const gridVar = varName + '_GridLayout';
+            const g = el.modifiers.UIGridLayout;
+            script += `local ${gridVar} = Instance.new("UIGridLayout")\n`;
+            script += `${gridVar}.CellSize = UDim2.new(0, ${g.cellSizeX || 80}, 0, ${g.cellSizeY || 80})\n`;
+            script += `${gridVar}.CellPadding = UDim2.new(0, ${g.cellPaddingX || 8}, 0, ${g.cellPaddingY || 8})\n`;
+            if (g.maxCells > 0) {
+              script += `${gridVar}.FillDirectionMaxCells = ${g.maxCells}\n`;
+            }
+            script += `${gridVar}.Parent = ${varName}\n`;
+          }
+
+          if (el.modifiers.UICorner) {
+            const cornerVar = varName + '_Corner';
+            script += `local ${cornerVar} = Instance.new("UICorner")\n`;
+            script += `${cornerVar}.CornerRadius = UDim.new(0, ${el.modifiers.UICorner.cornerRadiusOffset || 8})\n`;
+            script += `${cornerVar}.Parent = ${varName}\n`;
+          }
+
+          if (el.modifiers.UIStroke) {
+            const strokeVar = varName + '_Stroke';
+            script += `local ${strokeVar} = Instance.new("UIStroke")\n`;
+            script += `${strokeVar}.Color = ${hexToColor3Call(el.modifiers.UIStroke.color)}\n`;
+            script += `${strokeVar}.Thickness = ${el.modifiers.UIStroke.thickness || 2}\n`;
+            script += `${strokeVar}.Parent = ${varName}\n`;
+          }
+
+          if (el.modifiers.UIGradient) {
+            const gradVar = varName + '_Gradient';
+            const g = el.modifiers.UIGradient;
+            script += `local ${gradVar} = Instance.new("UIGradient")\n`;
+            script += `${gradVar}.Rotation = ${g.rotation || 0}\n`;
+            script += `${gradVar}.Color = ColorSequence.new({\n`;
+            script += `    ColorSequenceKeypoint.new(0, ${hexToColor3Call(g.color1)}),\n`;
+            script += `    ColorSequenceKeypoint.new(1, ${hexToColor3Call(g.color2)})\n`;
+            script += `})\n`;
+            script += `${gradVar}.Parent = ${varName}\n`;
+          }
+
+          if (el.modifiers.UIPadding) {
+            const p = el.modifiers.UIPadding;
+            const padVar = varName + '_Padding';
+            script += `local ${padVar} = Instance.new("UIPadding")\n`;
+            script += `${padVar}.PaddingTop = UDim.new(0, ${p.top || 0})\n`;
+            script += `${padVar}.PaddingBottom = UDim.new(0, ${p.bottom || 0})\n`;
+            script += `${padVar}.PaddingLeft = UDim.new(0, ${p.left || 0})\n`;
+            script += `${padVar}.PaddingRight = UDim.new(0, ${p.right || 0})\n`;
+            script += `${padVar}.Parent = ${varName}\n`;
+          }
+
+          if (el.modifiers.UIAspectRatioConstraint) {
+            const ratioVar = varName + '_AspectRatio';
+            script += `local ${ratioVar} = Instance.new("UIAspectRatioConstraint")\n`;
+            script += `${ratioVar}.AspectRatio = ${el.modifiers.UIAspectRatioConstraint.aspectRatio || 1}\n`;
+            script += `${ratioVar}.Parent = ${varName}\n`;
+          }
+        }
+
+        script += `${varName}.Parent = ${parentVar}\n\n`;
+      });
+
+      script += `print("Successfully loaded GUI!")\n`;
+      return script;
+    }
+
+    function openExportModal() {
+      const codeBlock = document.getElementById('exportCodeBlock');
+      const modal = document.getElementById('exportModal');
+      if (codeBlock) codeBlock.innerText = generateLuauScript();
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeExportModal() {
+      const modal = document.getElementById('exportModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function copyGeneratedLuau() {
+      const codeBlock = document.getElementById('exportCodeBlock');
+      if (!codeBlock) return;
+      const dummy = document.createElement('textarea');
+      dummy.value = codeBlock.innerText;
+      document.body.appendChild(dummy);
+      dummy.select();
+      try {
+        document.execCommand('copy');
+        showToast('Luau code copied to clipboard!');
+      } catch (err) {
+        showToast('Unable to copy code');
+      }
+      document.body.removeChild(dummy);
+    }
+
+    function renderAll() {
+      renderCanvasElements();
+      renderExplorerTree();
+      renderPropertiesPanel();
+      updateToolbarState();
+    }
+
+    window.onload = function() {
+      state.elements = [];
+      state.selectedId = null;
+      state.selectedModifierKey = null;
+      initResizeHandles();
+      renderAll();
+
+      setViewportSize(1280, 720);
+      setTimeout(function() { fitCanvasToScreen(); }, 100);
+
+      const container = document.getElementById('viewportContainer');
+      if (container) {
+        container.addEventListener('wheel', function(e) {
+          if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
+            const delta = e.deltaY < 0 ? 0.05 : -0.05;
+            zoomCanvas(delta);
+          }
+        }, { passive: false });
+
+        let isPanning = false;
+        let startPanMouseX = 0, startPanMouseY = 0;
+        let startPanX = 0, startPanY = 0;
+        let isSpacePressed = false;
+
+        window.addEventListener('keydown', function(e) {
+          if (e.code === 'Space' && !['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+            isSpacePressed = true;
+            if (!isPanning) container.classList.add('space-pan-ready');
+          }
+        });
+
+        window.addEventListener('keyup', function(e) {
+          if (e.code === 'Space') {
+            isSpacePressed = false;
+            if (!isPanning) container.classList.remove('space-pan-ready');
+          }
+        });
+
+        container.addEventListener('mousedown', function(e) {
+          const isMidClick = e.button === 1;
+          const isSpaceClick = e.button === 0 && isSpacePressed;
+
+          if (isMidClick || isSpaceClick) {
+            e.preventDefault();
+            e.stopPropagation();
+            isPanning = true;
+            startPanMouseX = e.clientX;
+            startPanMouseY = e.clientY;
+            startPanX = state.viewport.panX;
+            startPanY = state.viewport.panY;
+            document.body.classList.add('panning-active');
+          }
+        });
+
+        window.addEventListener('mousemove', function(e) {
+          if (!isPanning) return;
+          e.preventDefault();
+          const dx = e.clientX - startPanMouseX;
+          const dy = e.clientY - startPanMouseY;
+          state.viewport.panX = Math.round(startPanX + dx);
+          state.viewport.panY = Math.round(startPanY + dy);
+          applyZoom();
+        });
+
+        window.addEventListener('mouseup', function(e) {
+          if (isPanning && (e.button === 1 || e.button === 0)) {
+            isPanning = false;
+            document.body.classList.remove('panning-active');
+            if (!isSpacePressed) container.classList.remove('space-pan-ready');
+          }
+        });
+      }
+
+      window.addEventListener('resize', function() {
+        if (state.rootType === 'ScreenGui' && state.viewport.preset === '1280x720') {
+          fitCanvasToScreen();
+        }
+      });
+    };
+  </script>
+</body>
+</html>
