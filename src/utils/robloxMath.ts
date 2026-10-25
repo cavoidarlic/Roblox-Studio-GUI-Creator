@@ -396,6 +396,9 @@ local playerGui = player:WaitForChild("PlayerGui")
     if (el.type === 'TextLabel' || el.type === 'TextButton' || el.type === 'TextBox') {
       script += `${varName}.Text = "${(el.text || '').replace(/"/g, '\\"')}"\n`;
       script += `${varName}.TextColor3 = ${hexToColor3Call(el.textColor || '#ffffff')}\n`;
+      if (el.textTransparency !== undefined && el.textTransparency > 0) {
+        script += `${varName}.TextTransparency = ${el.textTransparency}\n`;
+      }
       script += `${varName}.TextSize = ${el.textSize || 14}\n`;
       script += `${varName}.Font = Enum.Font.${el.font || 'SourceSans'}\n`;
       if (el.textScaled) script += `${varName}.TextScaled = true\n`;

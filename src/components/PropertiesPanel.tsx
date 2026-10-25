@@ -71,7 +71,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const [isBrickColorOpen, setIsBrickColorOpen] = useState(false);
   const [brickColorSearch, setBrickColorSearch] = useState('');
   const [brickCategory, setBrickCategory] = useState<'All' | 'Greys' | 'Colors' | 'Pastels' | 'Vibrant'>('All');
-  const [activeColorTarget, setActiveColorTarget] = useState<'background' | 'text' | 'border'>('background');
+  const [activeColorTarget, setActiveColorTarget] = useState<'background' | 'text' | 'border' | 'image'>('background');
 
   // Local image upload helper
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -759,12 +759,14 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] text-gray-400 font-semibold uppercase">Apply To:</span>
                       <div className="flex space-x-1">
-                        {(['background', 'text', 'border'] as const).map(target => (
+                        {(
+                          ['background', 'text', 'border', ...(['ImageLabel', 'ImageButton'].includes(selectedElement.type) ? ['image'] : [])] as const
+                        ).map(target => (
                           <button
                             key={target}
                             type="button"
                             onClick={() => {
-                              setActiveColorTarget(target);
+                              setActiveColorTarget(target as any);
                               soundEffects.play('click');
                             }}
                             className={`px-1.5 py-0.5 rounded text-[10px] capitalize transition ${
@@ -873,6 +875,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                                 onUpdateElement({ ...selectedElement, backgroundColor: c.hex });
                               } else if (activeColorTarget === 'text') {
                                 onUpdateElement({ ...selectedElement, textColor: c.hex });
+                              } else if (activeColorTarget === 'image') {
+                                onUpdateElement({ ...selectedElement, imageColor: c.hex });
                               } else {
                                 onUpdateElement({ ...selectedElement, borderColor: c.hex, borderSizePixel: Math.max(1, selectedElement.borderSizePixel || 1) });
                               }
@@ -965,6 +969,29 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       }
                       className="flex-1 bg-[#1e1e1e] border border-[#3c3c3c] rounded px-2 py-0.5 text-white font-mono uppercase text-xs"
                     />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 items-center">
+                  <span className="text-gray-400">TextTransparency</span>
+                  <div className="col-span-2 flex items-center space-x-2 font-mono">
+                    <input
+                      type="range"
+                      min="0"
+                      max="1"
+                      step="0.05"
+                      value={selectedElement.textTransparency ?? 0}
+                      onChange={e =>
+                        onUpdateElement({
+                          ...selectedElement,
+                          textTransparency: parseFloat(e.target.value)
+                        })
+                      }
+                      className="flex-1 accent-[#00a2ff]"
+                    />
+                    <span className="text-[11px] w-8 text-right">
+                      {selectedElement.textTransparency ?? 0}
+                    </span>
                   </div>
                 </div>
 
@@ -1136,6 +1163,28 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       className="hidden"
                     />
                   </label>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 items-center">
+                  <span className="text-gray-400">ImageColor3</span>
+                  <div className="col-span-2 flex items-center space-x-2">
+                    <input
+                      type="color"
+                      value={selectedElement.imageColor || '#ffffff'}
+                      onChange={e =>
+                        onUpdateElement({ ...selectedElement, imageColor: e.target.value })
+                      }
+                      className="w-7 h-6 rounded bg-transparent border border-[#3c3c3c] cursor-pointer"
+                    />
+                    <input
+                      type="text"
+                      value={selectedElement.imageColor || '#ffffff'}
+                      onChange={e =>
+                        onUpdateElement({ ...selectedElement, imageColor: e.target.value })
+                      }
+                      className="flex-1 bg-[#1e1e1e] border border-[#3c3c3c] rounded px-2 py-0.5 text-white font-mono uppercase text-xs"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 items-center">

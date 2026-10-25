@@ -517,6 +517,7 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
             <div
               style={{
                 color: el.textColor || '#ffffff',
+                opacity: 1 - (el.textTransparency ?? 0),
                 fontSize: `${computedSize}px`,
                 justifyContent:
                   el.textXAlignment === 'Left'
@@ -549,6 +550,7 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
             <div
               style={{
                 color: el.textColor || '#ffffff',
+                opacity: 1 - (el.textTransparency ?? 0),
                 fontSize: `${computedSize}px`,
                 fontFamily: fontDef.cssFamily,
                 fontWeight: fontDef.weight || 'normal'
@@ -564,52 +566,68 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
           );
         })()}
 
-        {(el.type === 'ImageLabel' || el.type === 'ImageButton') && (
-          <div className="w-full h-full relative pointer-events-none">
-            {el.scaleType === 'Tile' ? (
-              <div
-                style={{
-                  backgroundImage: `url("${el.image || ''}")`,
-                  backgroundRepeat: 'repeat',
-                  backgroundSize: `${el.tileSize?.x || 64}px ${el.tileSize?.y || 64}px`,
-                  opacity: 1 - (el.imageTransparency ?? 0)
-                }}
-                className="w-full h-full"
-              />
-            ) : el.scaleType === 'Slice' && el.sliceCenter ? (
-              <div
-                style={{
-                  borderStyle: 'solid',
-                  borderWidth: `${el.sliceCenter.minY}px ${el.sliceCenter.maxX - el.sliceCenter.minX}px ${el.sliceCenter.maxY - el.sliceCenter.minY}px ${el.sliceCenter.minX}px`,
-                  borderImageSource: `url("${el.image || ''}")`,
-                  borderImageSlice: `${el.sliceCenter.minY} ${el.sliceCenter.maxX} ${el.sliceCenter.maxY} ${el.sliceCenter.minX} fill`,
-                  borderImageRepeat: 'stretch',
-                  opacity: 1 - (el.imageTransparency ?? 0)
-                }}
-                className="w-full h-full"
-              />
-            ) : (
-              <img
-                src={el.image || 'https://placehold.co/300x200/22222b/ffffff?text=Roblox+Decal'}
-                alt={el.name}
-                style={{
-                  objectFit:
-                    el.scaleType === 'Fit'
-                      ? 'contain'
-                      : el.scaleType === 'Crop'
-                      ? 'cover'
-                      : 'fill',
-                  opacity: 1 - (el.imageTransparency ?? 0),
-                  imageRendering: el.resampleMode === 'Pixelated' ? 'pixelated' : 'auto'
-                }}
-                className="w-full h-full pointer-events-none"
-              />
-            )}
-          </div>
-        )}
+        {(el.type === 'ImageLabel' || el.type === 'ImageButton') && (() => {
+          let imageFilter: string | undefined = undefined;
+          if (el.imageColor && el.imageColor.toLowerCase() !== '#ffffff') {
+            const rgb = hexToRgb(el.imageColor);
+            const r = (rgb.r / 255).toFixed(4);
+            const g = (rgb.g / 255).toFixed(4);
+            const b = (rgb.b / 255).toFixed(4);
+            const matrix = `${r} 0 0 0 0 0 ${g} 0 0 0 0 0 ${b} 0 0 0 0 0 1 0`;
+            const svgString = `<svg xmlns="http://www.w3.org/2000/svg"><filter id="f"><feColorMatrix type="matrix" values="${matrix}"/></filter></svg>`;
+            imageFilter = `url("data:image/svg+xml;utf8,${encodeURIComponent(svgString)}#f")`;
+          }
+
+          return (
+            <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+              {el.scaleType === 'Tile' ? (
+                <div
+                  style={{
+                    backgroundImage: `url("${el.image || ''}")`,
+                    backgroundRepeat: 'repeat',
+                    backgroundSize: `${el.tileSize?.x || 64}px ${el.tileSize?.y || 64}px`,
+                    opacity: 1 - (el.imageTransparency ?? 0),
+                    filter: imageFilter
+                  }}
+                  className="w-full h-full"
+                />
+              ) : el.scaleType === 'Slice' && el.sliceCenter ? (
+                <div
+                  style={{
+                    borderStyle: 'solid',
+                    borderWidth: `${el.sliceCenter.minY}px ${el.sliceCenter.maxX - el.sliceCenter.minX}px ${el.sliceCenter.maxY - el.sliceCenter.minY}px ${el.sliceCenter.minX}px`,
+                    borderImageSource: `url("${el.image || ''}")`,
+                    borderImageSlice: `${el.sliceCenter.minY} ${el.sliceCenter.maxX} ${el.sliceCenter.maxY} ${el.sliceCenter.minX} fill`,
+                    borderImageRepeat: 'stretch',
+                    opacity: 1 - (el.imageTransparency ?? 0),
+                    filter: imageFilter
+                  }}
+                  className="w-full h-full"
+                />
+              ) : (
+                <img
+                  src={el.image || 'https://placehold.co/300x200/22222b/ffffff?text=Roblox+Decal'}
+                  alt={el.name}
+                  style={{
+                    objectFit:
+                      el.scaleType === 'Fit'
+                        ? 'contain'
+                        : el.scaleType === 'Crop'
+                        ? 'cover'
+                        : 'fill',
+                    opacity: 1 - (el.imageTransparency ?? 0),
+                    imageRendering: el.resampleMode === 'Pixelated' ? 'pixelated' : 'auto',
+                    filter: imageFilter
+                  }}
+                  className="w-full h-full pointer-events-none"
+                />
+              )}
+            </div>
+          );
+        })()}
 
         {el.type === 'ViewportFrame' && (
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gray-950/80 p-2 text-center pointer-events-none">
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-950/80 p-2 text-center pointer-events-none z-0">
             <Box className="w-6 h-6 text-emerald-400 mb-1 animate-pulse" />
             <span className="text-[10px] text-emerald-300 font-mono">ViewportFrame 3D</span>
           </div>
@@ -617,7 +635,7 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
 
         {/* Children rendering with Layout Modifiers support */}
         {children.length > 0 && (
-          <div className="w-full h-full relative pointer-events-auto">
+          <div className="absolute inset-0 pointer-events-auto z-10">
             {el.modifiers?.UIListLayout ? (
               (() => {
                 const layout = el.modifiers.UIListLayout;

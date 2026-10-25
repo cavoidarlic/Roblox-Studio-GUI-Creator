@@ -130,6 +130,7 @@ export interface RobloxElement {
   // Text specific
   text?: string;
   textColor?: string;
+  textTransparency?: number;
   textSize?: number;
   font?: string;
   textScaled?: boolean;

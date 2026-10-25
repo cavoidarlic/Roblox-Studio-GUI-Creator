@@ -233,11 +233,11 @@ export default function App() {
       const count = elements.filter(e => e.type === type).length + 1;
       const name = `${type}${count}`;
 
-      // If a container is selected, insert as child
+      // If a container is selected, insert as child (Frames, ImageLabels, ImageButtons, etc.)
       let parentId: string | null = null;
       if (selectedId) {
         const sel = elements.find(e => e.id === selectedId);
-        if (sel && ['Frame', 'ScrollingFrame', 'ViewportFrame'].includes(sel.type)) {
+        if (sel && ['Frame', 'ScrollingFrame', 'ViewportFrame', 'ImageLabel', 'ImageButton'].includes(sel.type)) {
           parentId = sel.id;
         }
       }
@@ -585,11 +585,11 @@ export default function App() {
     if (selectedId) {
       const sel = elements.find(e => e.id === selectedId);
       if (sel) {
-        // If selected element is a container frame, paste INSIDE it
-        if (['Frame', 'ScrollingFrame', 'ViewportFrame'].includes(sel.type)) {
+        // If selected element is a container frame or image, paste INSIDE it
+        if (['Frame', 'ScrollingFrame', 'ViewportFrame', 'ImageLabel', 'ImageButton'].includes(sel.type)) {
           targetParentId = sel.id;
         } else {
-          // If selected element is a leaf (e.g. TextButton/ImageLabel), paste as its sibling (in same parent)
+          // If selected element is a leaf (e.g. TextButton), paste as its sibling (in same parent)
           targetParentId = sel.parentId || null;
         }
       }
