@@ -57,9 +57,15 @@ export interface UIStrokeModifier {
   applyStrokeMode: 'Border' | 'Contextual';
 }
 
+export interface ColorSequenceKeypoint {
+  time: number; // 0 to 1
+  color: string; // hex
+}
+
 export interface UIGradientModifier {
-  color1: string;
-  color2: string;
+  color1?: string;
+  color2?: string;
+  keypoints?: ColorSequenceKeypoint[];
   rotation: number;
   transparency?: number;
   offset?: Vector2D;

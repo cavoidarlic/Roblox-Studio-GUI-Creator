@@ -465,17 +465,30 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
     if (el.modifiers?.UIGradient) {
       const g = el.modifiers.UIGradient;
       const angle = (g.rotation || 0) + 90;
-      const c1 = g.color1 || '#ff007f';
-      const c2 = g.color2 || '#7928ca';
       const trans = g.transparency ?? 0;
       const baseAlpha = 1 - trans;
 
-      const rgb1 = hexToRgb(c1);
-      const rgb2 = hexToRgb(c2);
-      const rgba1 = `rgba(${rgb1.r}, ${rgb1.g}, ${rgb1.b}, ${baseAlpha})`;
-      const rgba2 = `rgba(${rgb2.r}, ${rgb2.g}, ${rgb2.b}, ${baseAlpha})`;
+      let colorStops: string;
+      if (g.keypoints && g.keypoints.length > 0) {
+        const sorted = [...g.keypoints].sort((a, b) => a.time - b.time);
+        colorStops = sorted
+          .map(kp => {
+            const rgb = hexToRgb(kp.color);
+            const rgba = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${baseAlpha})`;
+            return `${rgba} ${Math.round(kp.time * 100)}%`;
+          })
+          .join(', ');
+      } else {
+        const c1 = g.color1 || '#ff007f';
+        const c2 = g.color2 || '#7928ca';
+        const rgb1 = hexToRgb(c1);
+        const rgb2 = hexToRgb(c2);
+        const rgba1 = `rgba(${rgb1.r}, ${rgb1.g}, ${rgb1.b}, ${baseAlpha})`;
+        const rgba2 = `rgba(${rgb2.r}, ${rgb2.g}, ${rgb2.b}, ${baseAlpha})`;
+        colorStops = `${rgba1} 0%, ${rgba2} 100%`;
+      }
 
-      gradientCss = `linear-gradient(${angle}deg, ${rgba1}, ${rgba2})`;
+      gradientCss = `linear-gradient(${angle}deg, ${colorStops})`;
 
       // Only apply gradient to the outer container if it's NOT an image or text element
       // (For Text and Image, Roblox Studio tints the text/image itself rather than creating a rectangular background box)

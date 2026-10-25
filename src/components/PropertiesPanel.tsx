@@ -27,7 +27,8 @@ import {
   RefreshCw,
   Bold,
   Maximize,
-  Download
+  Download,
+  Plus
 } from 'lucide-react';
 import { exportSingleImage } from '../utils/imageExporter';
 import { ROBLOX_FONTS, getFontDefinition } from '../data/robloxFonts';
@@ -1353,204 +1354,246 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                         </>
                       )}
 
-                      {modKey === 'UIGradient' && (
-                        <>
-                          <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
-                            <span className="text-gray-400">Color 1 (Start)</span>
-                            <div className="col-span-2 flex items-center space-x-2">
-                              <input
-                                type="color"
-                                value={(mod as any).color1 || '#ff007f'}
-                                onChange={e =>
-                                  onUpdateElement({
-                                    ...selectedElement,
-                                    modifiers: {
-                                      ...selectedElement.modifiers,
-                                      UIGradient: {
-                                        ...selectedElement.modifiers.UIGradient!,
-                                        color1: e.target.value
-                                      }
-                                    }
-                                  })
-                                }
-                                className="w-7 h-6 rounded bg-transparent border border-[#3c3c3c] cursor-pointer"
-                              />
-                              <input
-                                type="text"
-                                value={(mod as any).color1 || '#ff007f'}
-                                onChange={e =>
-                                  onUpdateElement({
-                                    ...selectedElement,
-                                    modifiers: {
-                                      ...selectedElement.modifiers,
-                                      UIGradient: {
-                                        ...selectedElement.modifiers.UIGradient!,
-                                        color1: e.target.value
-                                      }
-                                    }
-                                  })
-                                }
-                                className="flex-1 bg-[#252526] border border-[#3c3c3c] rounded px-2 py-0.5 text-white font-mono text-[10px] uppercase"
-                              />
-                            </div>
-                          </div>
+                      {modKey === 'UIGradient' && (() => {
+                        const gradMod = (mod as any);
+                        const keypoints: Array<{ time: number; color: string }> =
+                          gradMod.keypoints && gradMod.keypoints.length > 0
+                            ? gradMod.keypoints
+                            : [
+                                { time: 0, color: gradMod.color1 || '#ff007f' },
+                                { time: 1, color: gradMod.color2 || '#7928ca' }
+                              ];
 
-                          <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
-                            <span className="text-gray-400">Color 2 (End)</span>
-                            <div className="col-span-2 flex items-center space-x-2">
-                              <input
-                                type="color"
-                                value={(mod as any).color2 || '#7928ca'}
-                                onChange={e =>
-                                  onUpdateElement({
-                                    ...selectedElement,
-                                    modifiers: {
-                                      ...selectedElement.modifiers,
-                                      UIGradient: {
-                                        ...selectedElement.modifiers.UIGradient!,
-                                        color2: e.target.value
-                                      }
-                                    }
-                                  })
-                                }
-                                className="w-7 h-6 rounded bg-transparent border border-[#3c3c3c] cursor-pointer"
-                              />
-                              <input
-                                type="text"
-                                value={(mod as any).color2 || '#7928ca'}
-                                onChange={e =>
-                                  onUpdateElement({
-                                    ...selectedElement,
-                                    modifiers: {
-                                      ...selectedElement.modifiers,
-                                      UIGradient: {
-                                        ...selectedElement.modifiers.UIGradient!,
-                                        color2: e.target.value
-                                      }
-                                    }
-                                  })
-                                }
-                                className="flex-1 bg-[#252526] border border-[#3c3c3c] rounded px-2 py-0.5 text-white font-mono text-[10px] uppercase"
-                              />
-                            </div>
-                          </div>
+                        const updateKeypoints = (newKps: Array<{ time: number; color: string }>) => {
+                          const sorted = [...newKps].sort((a, b) => a.time - b.time);
+                          onUpdateElement({
+                            ...selectedElement,
+                            modifiers: {
+                              ...selectedElement.modifiers,
+                              UIGradient: {
+                                ...selectedElement.modifiers.UIGradient!,
+                                keypoints: sorted,
+                                color1: sorted[0]?.color || '#ff007f',
+                                color2: sorted[sorted.length - 1]?.color || '#7928ca'
+                              }
+                            }
+                          });
+                        };
 
-                          <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
-                            <span className="text-gray-400">Rotation (deg)</span>
-                            <div className="col-span-2 flex items-center space-x-2">
-                              <input
-                                type="range"
-                                min="-180"
-                                max="180"
-                                step="5"
-                                value={(mod as any).rotation || 0}
-                                onChange={e =>
-                                  onUpdateElement({
-                                    ...selectedElement,
-                                    modifiers: {
-                                      ...selectedElement.modifiers,
-                                      UIGradient: {
-                                        ...selectedElement.modifiers.UIGradient!,
-                                        rotation: parseInt(e.target.value, 10) || 0
-                                      }
-                                    }
-                                  })
-                                }
-                                className="flex-1 accent-[#00a2ff]"
-                              />
-                              <input
-                                type="number"
-                                min="-360"
-                                max="360"
-                                value={(mod as any).rotation || 0}
-                                onChange={e =>
-                                  onUpdateElement({
-                                    ...selectedElement,
-                                    modifiers: {
-                                      ...selectedElement.modifiers,
-                                      UIGradient: {
-                                        ...selectedElement.modifiers.UIGradient!,
-                                        rotation: parseInt(e.target.value, 10) || 0
-                                      }
-                                    }
-                                  })
-                                }
-                                className="w-12 bg-[#252526] border border-[#3c3c3c] rounded px-1.5 py-0.5 text-white font-mono text-center text-[11px]"
-                              />
-                            </div>
-                          </div>
+                        const handleAddKeypoint = () => {
+                          if (keypoints.length >= 8) return;
+                          soundEffects.play('click');
+                          // Place new point midway between 0 and 1 or existing points
+                          const nextTime = Math.min(0.9, Math.max(0.1, Number((keypoints.length / (keypoints.length + 1)).toFixed(2))));
+                          updateKeypoints([...keypoints, { time: nextTime, color: '#00c6ff' }]);
+                        };
 
-                          <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
-                            <span className="text-gray-400">Transparency</span>
-                            <div className="col-span-2 flex items-center space-x-2 font-mono">
-                              <input
-                                type="range"
-                                min="0"
-                                max="1"
-                                step="0.05"
-                                value={(mod as any).transparency ?? 0}
-                                onChange={e =>
-                                  onUpdateElement({
-                                    ...selectedElement,
-                                    modifiers: {
-                                      ...selectedElement.modifiers,
-                                      UIGradient: {
-                                        ...selectedElement.modifiers.UIGradient!,
-                                        transparency: parseFloat(e.target.value) || 0
-                                      }
-                                    }
-                                  })
-                                }
-                                className="flex-1 accent-[#00a2ff]"
-                              />
-                              <span className="text-[11px] w-8 text-right">
-                                {(mod as any).transparency ?? 0}
-                              </span>
-                            </div>
-                          </div>
+                        const handleRemoveKeypoint = (idx: number) => {
+                          if (keypoints.length <= 2) return;
+                          soundEffects.play('click');
+                          updateKeypoints(keypoints.filter((_, i) => i !== idx));
+                        };
 
-                          {/* Quick gradient presets */}
-                          <div className="space-y-1 pt-1 border-t border-[#3c3c3c]/50">
-                            <span className="text-[10px] text-gray-400 font-semibold uppercase">Presets</span>
-                            <div className="grid grid-cols-3 gap-1">
-                              {[
-                                { name: 'Sunset', c1: '#ff512f', c2: '#dd2476' },
-                                { name: 'Neon Sky', c1: '#00c6ff', c2: '#0072ff' },
-                                { name: 'Emerald', c1: '#11998e', c2: '#38ef7d' },
-                                { name: 'Gold', c1: '#f7971e', c2: '#ffd200' },
-                                { name: 'Cyber', c1: '#f857a6', c2: '#ff5858' },
-                                { name: 'Dark Mode', c1: '#434343', c2: '#000000' }
-                              ].map(p => (
+                        const handleKeypointColorChange = (idx: number, newColor: string) => {
+                          const updated = [...keypoints];
+                          updated[idx] = { ...updated[idx], color: newColor };
+                          updateKeypoints(updated);
+                        };
+
+                        const handleKeypointTimeChange = (idx: number, newTime: number) => {
+                          const clamped = Math.max(0, Math.min(1, newTime));
+                          const updated = [...keypoints];
+                          updated[idx] = { ...updated[idx], time: Number(clamped.toFixed(2)) };
+                          updateKeypoints(updated);
+                        };
+
+                        return (
+                          <>
+                            {/* Color Sequence Visual Track Preview */}
+                            <div className="space-y-1.5 pb-2 border-b border-[#3c3c3c]/60">
+                              <div className="flex items-center justify-between text-[10px] text-gray-400 font-semibold uppercase">
+                                <span>ColorSequence Keypoints ({keypoints.length}/8)</span>
                                 <button
-                                  key={p.name}
                                   type="button"
-                                  onClick={() => {
-                                    soundEffects.play('click');
+                                  onClick={handleAddKeypoint}
+                                  disabled={keypoints.length >= 8}
+                                  title="Add new gradient keypoint (up to 8 points)"
+                                  className="px-1.5 py-0.5 bg-[#007acc] hover:bg-blue-600 disabled:opacity-40 text-white rounded text-[9px] flex items-center space-x-1 transition font-bold"
+                                >
+                                  <Plus className="w-2.5 h-2.5" />
+                                  <span>Add Point</span>
+                                </button>
+                              </div>
+
+                              {/* Interactive Gradient Bar */}
+                              <div
+                                className="w-full h-4 rounded border border-white/20 shadow-inner relative overflow-hidden"
+                                style={{
+                                  background: `linear-gradient(90deg, ${[...keypoints]
+                                    .sort((a, b) => a.time - b.time)
+                                    .map(kp => `${kp.color} ${Math.round(kp.time * 100)}%`)
+                                    .join(', ')})`
+                                }}
+                              />
+                            </div>
+
+                            {/* Keypoint List Editor */}
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-0.5">
+                              {keypoints.map((kp, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center space-x-2 bg-[#252526] p-1 rounded border border-[#3c3c3c] text-[11px]"
+                                >
+                                  <input
+                                    type="color"
+                                    value={kp.color}
+                                    onChange={e => handleKeypointColorChange(idx, e.target.value)}
+                                    className="w-6 h-5 rounded bg-transparent border border-[#3c3c3c] cursor-pointer shrink-0"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={kp.color}
+                                    onChange={e => handleKeypointColorChange(idx, e.target.value)}
+                                    className="w-16 bg-[#1a1a1c] border border-[#3c3c3c] rounded px-1 py-0.5 text-white font-mono uppercase text-[9px]"
+                                  />
+                                  <div className="flex-1 flex items-center space-x-1 text-gray-400">
+                                    <span className="text-[9px] font-mono shrink-0">@</span>
+                                    <input
+                                      type="range"
+                                      min="0"
+                                      max="1"
+                                      step="0.01"
+                                      value={kp.time}
+                                      onChange={e => handleKeypointTimeChange(idx, parseFloat(e.target.value))}
+                                      className="flex-1 accent-[#00a2ff]"
+                                    />
+                                    <span className="w-7 text-[9px] font-mono text-right text-gray-300 shrink-0">
+                                      {Math.round(kp.time * 100)}%
+                                    </span>
+                                  </div>
+                                  {keypoints.length > 2 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveKeypoint(idx)}
+                                      title="Delete keypoint"
+                                      className="text-gray-400 hover:text-red-400 p-0.5 shrink-0"
+                                    >
+                                      <Trash2 className="w-2.5 h-2.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+
+                            {/* Rotation */}
+                            <div className="grid grid-cols-3 gap-2 items-center text-[11px] pt-1">
+                              <span className="text-gray-400">Rotation (deg)</span>
+                              <div className="col-span-2 flex items-center space-x-2">
+                                <input
+                                  type="range"
+                                  min="-180"
+                                  max="180"
+                                  step="5"
+                                  value={gradMod.rotation || 0}
+                                  onChange={e =>
                                     onUpdateElement({
                                       ...selectedElement,
                                       modifiers: {
                                         ...selectedElement.modifiers,
                                         UIGradient: {
                                           ...selectedElement.modifiers.UIGradient!,
-                                          color1: p.c1,
-                                          color2: p.c2
+                                          rotation: parseInt(e.target.value, 10) || 0
                                         }
                                       }
-                                    });
-                                  }}
-                                  className="h-5 rounded border border-[#3c3c3c] hover:border-white transition flex items-center justify-center text-[9px] text-white font-medium shadow-xs"
-                                  style={{
-                                    background: `linear-gradient(90deg, ${p.c1}, ${p.c2})`,
-                                    textShadow: '0 1px 2px rgba(0,0,0,0.8)'
-                                  }}
-                                >
-                                  {p.name}
-                                </button>
-                              ))}
+                                    })
+                                  }
+                                  className="flex-1 accent-[#00a2ff]"
+                                />
+                                <input
+                                  type="number"
+                                  min="-360"
+                                  max="360"
+                                  value={gradMod.rotation || 0}
+                                  onChange={e =>
+                                    onUpdateElement({
+                                      ...selectedElement,
+                                      modifiers: {
+                                        ...selectedElement.modifiers,
+                                        UIGradient: {
+                                          ...selectedElement.modifiers.UIGradient!,
+                                          rotation: parseInt(e.target.value, 10) || 0
+                                        }
+                                      }
+                                    })
+                                  }
+                                  className="w-12 bg-[#252526] border border-[#3c3c3c] rounded px-1.5 py-0.5 text-white font-mono text-center text-[11px]"
+                                />
+                              </div>
                             </div>
-                          </div>
-                        </>
-                      )}
+
+                            {/* Transparency */}
+                            <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
+                              <span className="text-gray-400">Transparency</span>
+                              <div className="col-span-2 flex items-center space-x-2 font-mono">
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="1"
+                                  step="0.05"
+                                  value={gradMod.transparency ?? 0}
+                                  onChange={e =>
+                                    onUpdateElement({
+                                      ...selectedElement,
+                                      modifiers: {
+                                        ...selectedElement.modifiers,
+                                        UIGradient: {
+                                          ...selectedElement.modifiers.UIGradient!,
+                                          transparency: parseFloat(e.target.value) || 0
+                                        }
+                                      }
+                                    })
+                                  }
+                                  className="flex-1 accent-[#00a2ff]"
+                                />
+                                <span className="text-[11px] w-8 text-right">
+                                  {gradMod.transparency ?? 0}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Quick gradient presets (with 2, 3, or multi-stop colors) */}
+                            <div className="space-y-1 pt-1 border-t border-[#3c3c3c]/50">
+                              <span className="text-[10px] text-gray-400 font-semibold uppercase">Presets</span>
+                              <div className="grid grid-cols-3 gap-1">
+                                {[
+                                  { name: 'Sunset', kps: [{ time: 0, color: '#ff512f' }, { time: 1, color: '#dd2476' }] },
+                                  { name: 'Rainbow', kps: [{ time: 0, color: '#ff0000' }, { time: 0.33, color: '#ffff00' }, { time: 0.66, color: '#00ff00' }, { time: 1, color: '#00c6ff' }] },
+                                  { name: 'Neon Sky', kps: [{ time: 0, color: '#00c6ff' }, { time: 0.5, color: '#0072ff' }, { time: 1, color: '#7928ca' }] },
+                                  { name: 'Emerald', kps: [{ time: 0, color: '#11998e' }, { time: 1, color: '#38ef7d' }] },
+                                  { name: 'Fire', kps: [{ time: 0, color: '#ffe259' }, { time: 0.5, color: '#ff6a00' }, { time: 1, color: '#ee0979' }] },
+                                  { name: 'Dark Mode', kps: [{ time: 0, color: '#434343' }, { time: 1, color: '#000000' }] }
+                                ].map(p => (
+                                  <button
+                                    key={p.name}
+                                    type="button"
+                                    onClick={() => {
+                                      soundEffects.play('click');
+                                      updateKeypoints(p.kps);
+                                    }}
+                                    className="h-5 rounded border border-[#3c3c3c] hover:border-white transition flex items-center justify-center text-[9px] text-white font-medium shadow-xs"
+                                    style={{
+                                      background: `linear-gradient(90deg, ${p.kps.map(k => `${k.color} ${Math.round(k.time * 100)}%`).join(', ')})`,
+                                      textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                                    }}
+                                  >
+                                    {p.name}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
 
                       {modKey === 'UIListLayout' && (
                         <>

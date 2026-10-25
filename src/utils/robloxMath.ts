@@ -468,10 +468,20 @@ local playerGui = player:WaitForChild("PlayerGui")
         if (g.transparency !== undefined && g.transparency > 0) {
           script += `${gradVar}.Transparency = NumberSequence.new(${g.transparency})\n`;
         }
-        script += `${gradVar}.Color = ColorSequence.new({\n`;
-        script += `    ColorSequenceKeypoint.new(0, ${hexToColor3Call(g.color1 || '#ff007f')}),\n`;
-        script += `    ColorSequenceKeypoint.new(1, ${hexToColor3Call(g.color2 || '#7928ca')})\n`;
-        script += `})\n`;
+        if (g.keypoints && g.keypoints.length > 0) {
+          const sorted = [...g.keypoints].sort((a, b) => a.time - b.time);
+          script += `${gradVar}.Color = ColorSequence.new({\n`;
+          sorted.forEach((kp, idx) => {
+            const isLast = idx === sorted.length - 1;
+            script += `    ColorSequenceKeypoint.new(${kp.time.toFixed(3).replace(/\.?0+$/, '') || '0'}, ${hexToColor3Call(kp.color)})${isLast ? '' : ','}\n`;
+          });
+          script += `})\n`;
+        } else {
+          script += `${gradVar}.Color = ColorSequence.new({\n`;
+          script += `    ColorSequenceKeypoint.new(0, ${hexToColor3Call(g.color1 || '#ff007f')}),\n`;
+          script += `    ColorSequenceKeypoint.new(1, ${hexToColor3Call(g.color2 || '#7928ca')})\n`;
+          script += `})\n`;
+        }
         script += `${gradVar}.Parent = ${varName}\n`;
       }
 
