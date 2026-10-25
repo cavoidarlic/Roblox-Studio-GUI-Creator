@@ -457,9 +457,31 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
       modStyles.outline = `${s.thickness || 2}px solid ${s.color || '#00a2ff'}`;
       modStyles.outlineOffset = s.applyStrokeMode === 'Border' ? `-${s.thickness || 2}px` : '0px';
     }
+    // UIGradient on general background (Frames, ScrollingFrames, ViewportFrames)
+    const isTextElement = el.type === 'TextLabel' || el.type === 'TextButton';
+    const isImageElement = el.type === 'ImageLabel' || el.type === 'ImageButton';
+    let gradientCss: string | null = null;
+
     if (el.modifiers?.UIGradient) {
       const g = el.modifiers.UIGradient;
-      modStyles.backgroundImage = `linear-gradient(${g.rotation || 0}deg, ${g.color1 || '#ff007f'}, ${g.color2 || '#7928ca'})`;
+      const angle = (g.rotation || 0) + 90;
+      const c1 = g.color1 || '#ff007f';
+      const c2 = g.color2 || '#7928ca';
+      const trans = g.transparency ?? 0;
+      const baseAlpha = 1 - trans;
+
+      const rgb1 = hexToRgb(c1);
+      const rgb2 = hexToRgb(c2);
+      const rgba1 = `rgba(${rgb1.r}, ${rgb1.g}, ${rgb1.b}, ${baseAlpha})`;
+      const rgba2 = `rgba(${rgb2.r}, ${rgb2.g}, ${rgb2.b}, ${baseAlpha})`;
+
+      gradientCss = `linear-gradient(${angle}deg, ${rgba1}, ${rgba2})`;
+
+      // Only apply gradient to the outer container if it's NOT an image or text element
+      // (For Text and Image, Roblox Studio tints the text/image itself rather than creating a rectangular background box)
+      if (!isTextElement && !isImageElement) {
+        modStyles.backgroundImage = gradientCss;
+      }
     }
     if (el.modifiers?.UIPadding) {
       const p = el.modifiers.UIPadding;
@@ -513,10 +535,19 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
             ? Math.max(10, Math.min(Math.round(bounds.h * 0.7), Math.round((bounds.w / Math.max(1, (el.text || 'A').length)) * 1.5)))
             : (el.textSize || 14);
 
+          const textGradientStyle: React.CSSProperties = gradientCss
+            ? {
+                backgroundImage: gradientCss,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent'
+              }
+            : {
+                color: el.textColor || '#ffffff'
+              };
+
           return (
             <div
               style={{
-                color: el.textColor || '#ffffff',
                 opacity: 1 - (el.textTransparency ?? 0),
                 fontSize: `${computedSize}px`,
                 justifyContent:
@@ -531,7 +562,8 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
                     : el.textYAlignment === 'Bottom'
                     ? 'flex-end'
                     : 'center',
-                ...fontStyle
+                ...fontStyle,
+                ...textGradientStyle
               }}
               className="w-full h-full flex px-1.5 cursor-default truncate whitespace-pre-wrap leading-tight"
             >
@@ -620,6 +652,17 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
                     filter: imageFilter
                   }}
                   className="w-full h-full pointer-events-none"
+                />
+              )}
+
+              {/* UIGradient mask over image only */}
+              {gradientCss && (
+                <div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: gradientCss,
+                    mixBlendMode: 'multiply'
+                  }}
                 />
               )}
             </div>

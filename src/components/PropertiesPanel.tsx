@@ -1353,6 +1353,205 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                         </>
                       )}
 
+                      {modKey === 'UIGradient' && (
+                        <>
+                          <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
+                            <span className="text-gray-400">Color 1 (Start)</span>
+                            <div className="col-span-2 flex items-center space-x-2">
+                              <input
+                                type="color"
+                                value={(mod as any).color1 || '#ff007f'}
+                                onChange={e =>
+                                  onUpdateElement({
+                                    ...selectedElement,
+                                    modifiers: {
+                                      ...selectedElement.modifiers,
+                                      UIGradient: {
+                                        ...selectedElement.modifiers.UIGradient!,
+                                        color1: e.target.value
+                                      }
+                                    }
+                                  })
+                                }
+                                className="w-7 h-6 rounded bg-transparent border border-[#3c3c3c] cursor-pointer"
+                              />
+                              <input
+                                type="text"
+                                value={(mod as any).color1 || '#ff007f'}
+                                onChange={e =>
+                                  onUpdateElement({
+                                    ...selectedElement,
+                                    modifiers: {
+                                      ...selectedElement.modifiers,
+                                      UIGradient: {
+                                        ...selectedElement.modifiers.UIGradient!,
+                                        color1: e.target.value
+                                      }
+                                    }
+                                  })
+                                }
+                                className="flex-1 bg-[#252526] border border-[#3c3c3c] rounded px-2 py-0.5 text-white font-mono text-[10px] uppercase"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
+                            <span className="text-gray-400">Color 2 (End)</span>
+                            <div className="col-span-2 flex items-center space-x-2">
+                              <input
+                                type="color"
+                                value={(mod as any).color2 || '#7928ca'}
+                                onChange={e =>
+                                  onUpdateElement({
+                                    ...selectedElement,
+                                    modifiers: {
+                                      ...selectedElement.modifiers,
+                                      UIGradient: {
+                                        ...selectedElement.modifiers.UIGradient!,
+                                        color2: e.target.value
+                                      }
+                                    }
+                                  })
+                                }
+                                className="w-7 h-6 rounded bg-transparent border border-[#3c3c3c] cursor-pointer"
+                              />
+                              <input
+                                type="text"
+                                value={(mod as any).color2 || '#7928ca'}
+                                onChange={e =>
+                                  onUpdateElement({
+                                    ...selectedElement,
+                                    modifiers: {
+                                      ...selectedElement.modifiers,
+                                      UIGradient: {
+                                        ...selectedElement.modifiers.UIGradient!,
+                                        color2: e.target.value
+                                      }
+                                    }
+                                  })
+                                }
+                                className="flex-1 bg-[#252526] border border-[#3c3c3c] rounded px-2 py-0.5 text-white font-mono text-[10px] uppercase"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
+                            <span className="text-gray-400">Rotation (deg)</span>
+                            <div className="col-span-2 flex items-center space-x-2">
+                              <input
+                                type="range"
+                                min="-180"
+                                max="180"
+                                step="5"
+                                value={(mod as any).rotation || 0}
+                                onChange={e =>
+                                  onUpdateElement({
+                                    ...selectedElement,
+                                    modifiers: {
+                                      ...selectedElement.modifiers,
+                                      UIGradient: {
+                                        ...selectedElement.modifiers.UIGradient!,
+                                        rotation: parseInt(e.target.value, 10) || 0
+                                      }
+                                    }
+                                  })
+                                }
+                                className="flex-1 accent-[#00a2ff]"
+                              />
+                              <input
+                                type="number"
+                                min="-360"
+                                max="360"
+                                value={(mod as any).rotation || 0}
+                                onChange={e =>
+                                  onUpdateElement({
+                                    ...selectedElement,
+                                    modifiers: {
+                                      ...selectedElement.modifiers,
+                                      UIGradient: {
+                                        ...selectedElement.modifiers.UIGradient!,
+                                        rotation: parseInt(e.target.value, 10) || 0
+                                      }
+                                    }
+                                  })
+                                }
+                                className="w-12 bg-[#252526] border border-[#3c3c3c] rounded px-1.5 py-0.5 text-white font-mono text-center text-[11px]"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2 items-center text-[11px]">
+                            <span className="text-gray-400">Transparency</span>
+                            <div className="col-span-2 flex items-center space-x-2 font-mono">
+                              <input
+                                type="range"
+                                min="0"
+                                max="1"
+                                step="0.05"
+                                value={(mod as any).transparency ?? 0}
+                                onChange={e =>
+                                  onUpdateElement({
+                                    ...selectedElement,
+                                    modifiers: {
+                                      ...selectedElement.modifiers,
+                                      UIGradient: {
+                                        ...selectedElement.modifiers.UIGradient!,
+                                        transparency: parseFloat(e.target.value) || 0
+                                      }
+                                    }
+                                  })
+                                }
+                                className="flex-1 accent-[#00a2ff]"
+                              />
+                              <span className="text-[11px] w-8 text-right">
+                                {(mod as any).transparency ?? 0}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Quick gradient presets */}
+                          <div className="space-y-1 pt-1 border-t border-[#3c3c3c]/50">
+                            <span className="text-[10px] text-gray-400 font-semibold uppercase">Presets</span>
+                            <div className="grid grid-cols-3 gap-1">
+                              {[
+                                { name: 'Sunset', c1: '#ff512f', c2: '#dd2476' },
+                                { name: 'Neon Sky', c1: '#00c6ff', c2: '#0072ff' },
+                                { name: 'Emerald', c1: '#11998e', c2: '#38ef7d' },
+                                { name: 'Gold', c1: '#f7971e', c2: '#ffd200' },
+                                { name: 'Cyber', c1: '#f857a6', c2: '#ff5858' },
+                                { name: 'Dark Mode', c1: '#434343', c2: '#000000' }
+                              ].map(p => (
+                                <button
+                                  key={p.name}
+                                  type="button"
+                                  onClick={() => {
+                                    soundEffects.play('click');
+                                    onUpdateElement({
+                                      ...selectedElement,
+                                      modifiers: {
+                                        ...selectedElement.modifiers,
+                                        UIGradient: {
+                                          ...selectedElement.modifiers.UIGradient!,
+                                          color1: p.c1,
+                                          color2: p.c2
+                                        }
+                                      }
+                                    });
+                                  }}
+                                  className="h-5 rounded border border-[#3c3c3c] hover:border-white transition flex items-center justify-center text-[9px] text-white font-medium shadow-xs"
+                                  style={{
+                                    background: `linear-gradient(90deg, ${p.c1}, ${p.c2})`,
+                                    textShadow: '0 1px 2px rgba(0,0,0,0.8)'
+                                  }}
+                                >
+                                  {p.name}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
                       {modKey === 'UIListLayout' && (
                         <>
                           <div className="grid grid-cols-3 gap-2 items-center text-[11px]">

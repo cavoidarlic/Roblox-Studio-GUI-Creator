@@ -465,6 +465,9 @@ local playerGui = player:WaitForChild("PlayerGui")
         const gradVar = `${varName}_Gradient`;
         script += `local ${gradVar} = Instance.new("UIGradient")\n`;
         script += `${gradVar}.Rotation = ${g.rotation || 0}\n`;
+        if (g.transparency !== undefined && g.transparency > 0) {
+          script += `${gradVar}.Transparency = NumberSequence.new(${g.transparency})\n`;
+        }
         script += `${gradVar}.Color = ColorSequence.new({\n`;
         script += `    ColorSequenceKeypoint.new(0, ${hexToColor3Call(g.color1 || '#ff007f')}),\n`;
         script += `    ColorSequenceKeypoint.new(1, ${hexToColor3Call(g.color2 || '#7928ca')})\n`;

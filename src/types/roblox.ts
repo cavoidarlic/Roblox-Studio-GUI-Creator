@@ -62,6 +62,7 @@ export interface UIGradientModifier {
   color2: string;
   rotation: number;
   transparency?: number;
+  offset?: Vector2D;
 }
 
 export interface UIPaddingModifier {
