@@ -45,6 +45,7 @@ import { CanvasWorkspace } from './components/CanvasWorkspace';
 import { ThreeDWorldPreview } from './components/ThreeDWorldPreview';
 import { PropertiesPanel } from './components/PropertiesPanel';
 import { ExportModal } from './components/ExportModal';
+import { exportAllImagesAsZip } from './utils/imageExporter';
 import { TemplatesModal } from './components/TemplatesModal';
 import { RatioCalculatorModal } from './components/RatioCalculatorModal';
 import { TweenServiceModal } from './components/TweenServiceModal';
@@ -1325,6 +1326,12 @@ export default function App() {
         onLoadScriptTrigger={() => setIsLoadScriptOpen(true)}
         onOpenTemplates={() => setIsTemplatesOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
+        onExportImages={() => exportAllImagesAsZip(elements)}
+        imageCount={
+          elements.filter(
+            el => (el.type === 'ImageLabel' || el.type === 'ImageButton') && el.image
+          ).length
+        }
         onOpenCalculator={() => setIsCalculatorOpen(true)}
         onOpenAnimations={() => setIsAnimationsOpen(true)}
         isAudioEnabled={isAudioEnabled}
@@ -1506,6 +1513,7 @@ export default function App() {
         isOpen={isExportOpen}
         onClose={() => setIsExportOpen(false)}
         luauScript={generateLuauScript(rootType, rootProperties, elements)}
+        elements={elements}
       />
 
       {/* Luau Script Import Modal */}

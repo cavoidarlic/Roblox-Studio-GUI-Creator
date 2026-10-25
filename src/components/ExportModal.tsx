@@ -6,21 +6,31 @@ import {
   Download,
   X,
   FileCode,
-  Info
+  Info,
+  Image as ImageIcon
 } from 'lucide-react';
+import { RobloxElement } from '../types/roblox';
+import { exportAllImagesAsZip } from '../utils/imageExporter';
 
 interface ExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   luauScript: string;
+  elements?: RobloxElement[];
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
   isOpen,
   onClose,
-  luauScript
+  luauScript,
+  elements = []
 }) => {
   const [copied, setCopied] = useState(false);
+  const [isExportingImages, setIsExportingImages] = useState(false);
+
+  const imageElements = elements.filter(
+    el => (el.type === 'ImageLabel' || el.type === 'ImageButton') && el.image
+  );
 
   if (!isOpen) return null;
 
@@ -91,6 +101,25 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </div>
 
           <div className="flex items-center space-x-2">
+            {imageElements.length > 0 && (
+              <button
+                onClick={async () => {
+                  setIsExportingImages(true);
+                  try {
+                    await exportAllImagesAsZip(elements);
+                  } finally {
+                    setIsExportingImages(false);
+                  }
+                }}
+                disabled={isExportingImages}
+                title="Download all ImageLabel / ImageButton images as a ZIP archive for Roblox Studio Asset Manager"
+                className="px-3 py-1.5 bg-[#1b3d2f] hover:bg-[#234e3c] text-emerald-300 hover:text-white border border-emerald-600/40 rounded font-medium flex items-center space-x-1.5 transition disabled:opacity-50"
+              >
+                <ImageIcon className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{isExportingImages ? 'Exporting...' : `Export ${imageElements.length} Images (.zip)`}</span>
+              </button>
+            )}
+
             <button
               onClick={handleDownloadFile}
               className="px-3 py-1.5 bg-[#2d2d30] hover:bg-[#37373d] text-gray-200 hover:text-white border border-[#3c3c3c] rounded font-medium flex items-center space-x-1.5 transition"

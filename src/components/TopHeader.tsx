@@ -24,7 +24,8 @@ import {
   Scale,
   Zap,
   Volume2,
-  VolumeX
+  VolumeX,
+  Image as ImageIcon
 } from 'lucide-react';
 import { AutosaveBadge } from './AutosaveBadge';
 
@@ -37,6 +38,8 @@ interface TopHeaderProps {
   onLoadScriptTrigger: () => void;
   onOpenTemplates: () => void;
   onOpenExport: () => void;
+  onExportImages?: () => void;
+  imageCount?: number;
   selectedElement: RobloxElement | null;
   parentElement?: RobloxElement | null;
   onConvertToScale: () => void;
@@ -77,6 +80,8 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   onLoadScriptTrigger = () => {},
   onOpenTemplates,
   onOpenExport,
+  onExportImages,
+  imageCount = 0,
   selectedElement,
   parentElement,
   onConvertToScale,
@@ -402,6 +407,18 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
           <Upload className="w-3.5 h-3.5 text-amber-400" />
           <span className="font-semibold hidden lg:inline">Load Script</span>
         </button>
+
+        {/* Export Images as ZIP Button */}
+        {onExportImages && imageCount > 0 && (
+          <button
+            onClick={onExportImages}
+            title={`Export all ${imageCount} Image elements as PNGs in a .zip file`}
+            className="p-1.5 sm:px-2 sm:py-1 text-teal-300 hover:text-white hover:bg-teal-600/20 rounded flex items-center space-x-1 transition font-medium border border-[#3e3e42] hover:border-teal-500/50"
+          >
+            <ImageIcon className="w-3.5 h-3.5 text-teal-400" />
+            <span className="font-semibold hidden lg:inline">Images ({imageCount})</span>
+          </button>
+        )}
 
         {/* Export Luau Script Button */}
         <button

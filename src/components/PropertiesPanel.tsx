@@ -26,8 +26,10 @@ import {
   Monitor,
   RefreshCw,
   Bold,
-  Maximize
+  Maximize,
+  Download
 } from 'lucide-react';
+import { exportSingleImage } from '../utils/imageExporter';
 import { ROBLOX_FONTS, getFontDefinition } from '../data/robloxFonts';
 import { ROBLOX_BRICK_COLORS, ROBLOX_UI_THEMES, UiColorTheme } from '../data/brickColors';
 import { soundEffects } from '../utils/soundEffects';
@@ -1153,16 +1155,32 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     }
                     className="w-full bg-[#1e1e1e] border border-[#3c3c3c] rounded px-2 py-1 text-white font-mono text-xs"
                   />
-                  <label className="mt-1 w-full py-1 bg-[#2d2d30] hover:bg-[#37373d] rounded text-gray-300 text-xs flex items-center justify-center space-x-1 cursor-pointer border border-[#3c3c3c]">
-                    <Upload className="w-3 h-3 text-[#00a2ff]" />
-                    <span>Upload Local Preview Image</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
+                  <div className="flex gap-1.5 mt-1">
+                    <label className="flex-1 py-1 bg-[#2d2d30] hover:bg-[#37373d] rounded text-gray-300 text-xs flex items-center justify-center space-x-1 cursor-pointer border border-[#3c3c3c] transition">
+                      <Upload className="w-3 h-3 text-[#00a2ff]" />
+                      <span>Upload Local Image</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    {selectedElement.image && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          soundEffects.play('click');
+                          exportSingleImage(selectedElement);
+                        }}
+                        title="Download element image as PNG (with ImageColor3 & transparency applied)"
+                        className="px-2 py-1 bg-[#2d2d30] hover:bg-[#37373d] text-emerald-400 hover:text-white rounded border border-[#3c3c3c] flex items-center space-x-1 text-xs transition"
+                      >
+                        <Download className="w-3 h-3 text-emerald-400" />
+                        <span>PNG</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-3 gap-2 items-center">
