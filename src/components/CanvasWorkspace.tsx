@@ -661,6 +661,28 @@ export const CanvasWorkspace: React.FC<CanvasWorkspaceProps> = ({
                   className="absolute inset-0 pointer-events-none"
                   style={{
                     background: gradientCss,
+                    WebkitMaskImage: el.image ? `url("${el.image}")` : undefined,
+                    maskImage: el.image ? `url("${el.image}")` : undefined,
+                    WebkitMaskSize:
+                      el.scaleType === 'Fit'
+                        ? 'contain'
+                        : el.scaleType === 'Crop'
+                        ? 'cover'
+                        : el.scaleType === 'Tile'
+                        ? `${el.tileSize?.x || 64}px ${el.tileSize?.y || 64}px`
+                        : '100% 100%',
+                    maskSize:
+                      el.scaleType === 'Fit'
+                        ? 'contain'
+                        : el.scaleType === 'Crop'
+                        ? 'cover'
+                        : el.scaleType === 'Tile'
+                        ? `${el.tileSize?.x || 64}px ${el.tileSize?.y || 64}px`
+                        : '100% 100%',
+                    WebkitMaskRepeat: el.scaleType === 'Tile' ? 'repeat' : 'no-repeat',
+                    maskRepeat: el.scaleType === 'Tile' ? 'repeat' : 'no-repeat',
+                    WebkitMaskPosition: 'center',
+                    maskPosition: 'center',
                     mixBlendMode: 'multiply'
                   }}
                 />
